@@ -1,0 +1,570 @@
+/* ================================================================
+   VARIABLES
+================================================================ */
+:root {
+  --bg:    #f5f3ee;
+  --sur:   #ffffff;
+  --sur2:  #f0ede6;
+  --bdr:   #e2ddd5;
+  --tx:    #1a1814;
+  --tx2:   #6b6560;
+  --tx3:   #9e9890;
+  --grn:   #2d6a4f;
+  --grn-l: #d8f0e5;
+  --red:   #c0392b;
+  --red-l: #fce8e6;
+  --amb:   #d97706;
+  --amb-l: #fef3c7;
+  --csh:   #7c3aed;
+  --csh-l: #ede9fe;
+  --bnk:   #0369a1;
+  --bnk-l: #e0f2fe;
+  --r:     10px;
+  --sh:    0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
+  --bottom-nav-h: 64px; /* スマホ下部ナビ高さ */
+}
+
+/* ================================================================
+   RESET
+================================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--tx);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  /* iOSゴムバンドスクロール対策 */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ================================================================
+   LAYOUT
+================================================================ */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ----------------------------------------------------------------
+   Header
+---------------------------------------------------------------- */
+header {
+  background: var(--sur);
+  border-bottom: 1px solid var(--bdr);
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 12px;
+}
+.logo {
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.logo-ic {
+  width: 26px; height: 26px;
+  background: var(--grn);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+}
+.hbals { display: flex; align-items: center; gap: 12px; }
+.hbal  { display: flex; flex-direction: column; align-items: flex-end; }
+.hbal .hl { font-size: 9px;  color: var(--tx3); line-height: 1; }
+.hbal .hv { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.hdiv { width: 1px; height: 24px; background: var(--bdr); }
+
+/* ----------------------------------------------------------------
+   Desktop top nav
+---------------------------------------------------------------- */
+#top-nav {
+  background: var(--sur);
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 20px;
+}
+.nav-btn {
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--tx2);
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-btn.active { color: var(--grn); border-bottom-color: var(--grn); font-weight: 500; }
+.nav-btn:hover:not(.active) { color: var(--tx); }
+
+/* ----------------------------------------------------------------
+   Mobile bottom nav
+---------------------------------------------------------------- */
+#bottom-nav {
+  display: none; /* モバイルのみ表示 */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--bottom-nav-h);
+  background: var(--sur);
+  border-top: 1px solid var(--bdr);
+  z-index: 100;
+  /* iOS safe area */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#bottom-nav .bnav-inner {
+  display: flex;
+  height: 100%;
+}
+.bnav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--tx3);
+  transition: color .15s;
+  padding: 6px 4px;
+  /* タップ領域確保 */
+  min-height: 44px;
+}
+.bnav-btn .bnav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.bnav-btn .bnav-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+.bnav-btn.active {
+  color: var(--grn);
+}
+
+/* ----------------------------------------------------------------
+   Main content
+---------------------------------------------------------------- */
+main {
+  flex: 1;
+  padding: 16px;
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+/* ================================================================
+   CARDS
+================================================================ */
+.card {
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--sh);
+}
+.ctitle {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tx3);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+
+/* ================================================================
+   SUMMARY CARDS
+================================================================ */
+.sg  { display: grid; gap: 10px; margin-bottom: 16px; }
+.sg4 { grid-template-columns: repeat(4, 1fr); }
+.sg2 { grid-template-columns: repeat(2, 1fr); }
+.sc  { background: var(--sur); border: 1px solid var(--bdr); border-radius: var(--r); padding: 12px 14px; }
+.sc .lb  { font-size: 11px; color: var(--tx2); margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+.sc .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.sc .vl  { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; }
+
+/* ================================================================
+   BADGES
+================================================================ */
+.bdg { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.bdg.cash     { background: var(--csh-l); color: var(--csh); }
+.bdg.bank     { background: var(--bnk-l); color: var(--bnk); }
+.bdg.transfer { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.bdg.male     { background: #dbeafe; color: #1d4ed8; }
+.bdg.female   { background: #fce7f3; color: #be185d; }
+.bdg.manager  { background: #d1fae5; color: #065f46; }
+.bdg.exec     { background: #fef3c7; color: #92400e; }
+
+/* ================================================================
+   TOGGLE BUTTONS
+================================================================ */
+.tog2 { display: grid; grid-template-columns: 1fr 1fr;     gap: 3px; background: var(--sur2); padding: 3px; border-radius: 8px; margin-bottom: 10px; }
+.tog3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; background: var(--sur2); padding: 3px; border-radius: 8px; margin-bottom: 10px; }
+.tbtn { padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; transition: all .15s; background: none; color: var(--tx2); min-height: 44px; }
+.tbtn.cash.on     { background: var(--csh); color: #fff; }
+.tbtn.bank.on     { background: var(--bnk); color: #fff; }
+.tbtn.income.on   { background: var(--grn); color: #fff; }
+.tbtn.expense.on  { background: var(--red); color: #fff; }
+.tbtn.transfer.on { background: #166534;    color: #fff; }
+
+/* ================================================================
+   FORMS
+================================================================ */
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fi { display: flex; flex-direction: column; gap: 4px; }
+.fi.full { grid-column: 1 / -1; }
+label { font-size: 12px; color: var(--tx2); font-weight: 500; }
+input, select, textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--bdr);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 16px; /* iOS zoom防止：16px以上 */
+  color: var(--tx);
+  background: var(--bg);
+  transition: border-color .15s;
+  outline: none;
+  width: 100%;
+  /* iOSのデフォルトスタイルをリセット */
+  -webkit-appearance: none;
+  appearance: none;
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6560' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--grn);
+  background: var(--sur);
+}
+textarea { resize: vertical; min-height: 52px; font-size: 16px; }
+
+/* ================================================================
+   BUTTONS
+================================================================ */
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px; /* タップ領域確保 */
+  -webkit-tap-highlight-color: transparent;
+}
+.bp { background: var(--grn); color: #fff; }
+.bp:hover, .bp:active { background: #245c42; }
+.bs { background: var(--sur2); color: var(--tx); border: 1px solid var(--bdr); }
+.bs:hover, .bs:active { background: var(--bdr); }
+.bd { background: var(--red-l); color: var(--red); }
+.bd:hover, .bd:active { background: var(--red); color: #fff; }
+.sm { padding: 6px 12px; font-size: 12px; min-height: 36px; }
+
+/* ================================================================
+   TRANSACTION ROWS
+================================================================ */
+.thr {
+  display: grid;
+  align-items: center;
+  padding: 5px 12px;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--tx3);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.txr {
+  display: grid;
+  align-items: center;
+  padding: 12px;
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  gap: 8px;
+  margin-bottom: 2px;
+  transition: background .1s;
+  /* タップフィードバック */
+  -webkit-tap-highlight-color: transparent;
+}
+.txr:active { background: var(--sur2); }
+/* 6col: date | acct | desc | cat | amount | actions */
+.tx6 { grid-template-columns: 68px 52px 1fr 84px 104px 58px; }
+.txdate { font-size: 12px; color: var(--tx2); font-family: 'DM Mono', monospace; }
+.txamt  { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; text-align: right; }
+.txamt.income   { color: var(--grn); }
+.txamt.expense  { color: var(--red); }
+.txamt.transfer { color: var(--tx2); }
+.txcat { font-size: 11px; padding: 2px 7px; border-radius: 20px; background: var(--sur2); color: var(--tx2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ================================================================
+   LEDGER TABLES
+================================================================ */
+.ltbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ltbl th { background: var(--sur2); padding: 8px 12px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
+.ltbl td { padding: 9px 12px; border-bottom: 1px solid var(--bdr); vertical-align: middle; }
+.ltbl tr:last-child td { border-bottom: none; }
+.ltbl tr:hover td { background: var(--sur2); }
+.ltbl .num     { font-family: 'DM Mono', monospace; text-align: right; }
+.ltbl .bal-pos { color: var(--grn); font-weight: 500; }
+.ltbl .bal-neg { color: var(--red); font-weight: 500; }
+.ltbl tfoot td { background: var(--sur2); font-weight: 600; border-top: 2px solid var(--bdr); }
+
+/* ================================================================
+   MEMBER TABLE
+================================================================ */
+.mtbl { width: 100%; border-collapse: collapse; }
+.mtbl th { background: var(--sur2); padding: 8px 12px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); }
+.mtbl td { padding: 10px 12px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; }
+.mtbl tr:last-child td { border-bottom: none; }
+.mtbl tr:active td { background: var(--sur2); }
+
+/* ================================================================
+   FEE
+================================================================ */
+.fee-setting-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.fat-c  { background: var(--sur); border: 1px solid var(--bdr); border-radius: var(--r); padding: 12px 14px; }
+.fsrow  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.fstat  { background: var(--sur); border: 1px solid var(--bdr); border-radius: var(--r); padding: 11px 12px; text-align: center; }
+.fstat .fn { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+.fstat .fl { font-size: 11px; color: var(--tx2); margin-top: 1px; }
+
+/* ================================================================
+   EXEC UNPAID TABLE
+================================================================ */
+.unp-wrap { overflow-x: auto; }
+.unp-tbl  { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.unp-tbl th { background: var(--sur2); padding: 7px 12px; text-align: center; border: 1px solid var(--bdr); font-weight: 500; color: var(--tx2); }
+.unp-tbl th:first-child { text-align: left; }
+.unp-tbl td { padding: 7px 12px; border: 1px solid var(--bdr); text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--red); }
+.unp-tbl td:first-child { text-align: left; font-family: 'Noto Sans JP', sans-serif; color: var(--tx); font-weight: 500; }
+.unp-tbl td.total-col { font-weight: 700; background: var(--red-l); color: var(--red); }
+.unp-tbl tr:hover td { background: var(--sur2); }
+
+/* ================================================================
+   CHART
+================================================================ */
+.chart-wrap { position: relative; height: 260px; }
+
+/* ================================================================
+   PROGRESS
+================================================================ */
+.pbar  { height: 5px; background: var(--sur2); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+.pfill { height: 100%; background: var(--grn); border-radius: 3px; transition: width .5s; }
+
+/* ================================================================
+   SECTION HEADERS / UTIL
+================================================================ */
+.sh    { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.st    { font-size: 15px; font-weight: 600; }
+.empty { text-align: center; padding: 36px 16px; color: var(--tx2); font-size: 13px; }
+hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
+
+/* ================================================================
+   ADJ ITEM
+================================================================ */
+.adj-item { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; background: var(--sur2); border-radius: 7px; margin-bottom: 5px; font-size: 13px; }
+
+/* ================================================================
+   MODAL
+================================================================ */
+.mbg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.38);
+  z-index: 200;
+  align-items: flex-end; /* モバイル：下から出る */
+  justify-content: center;
+  padding: 0;
+  overflow-y: auto;
+}
+.mbg.open { display: flex; }
+.modal {
+  background: var(--sur);
+  border-radius: 16px 16px 0 0; /* モバイル：下から */
+  padding: 24px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  box-shadow: 0 -4px 32px rgba(0,0,0,.15);
+  max-height: 92vh;
+  overflow-y: auto;
+  /* スワイプで閉じるヒント用 */
+  position: relative;
+}
+.modal::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  background: var(--bdr);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.mact { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+/* ================================================================
+   TOAST
+================================================================ */
+#toast {
+  position: fixed;
+  bottom: calc(var(--bottom-nav-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--tx);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ================================================================
+   TAB PILLS
+================================================================ */
+.tab-pills { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.pill {
+  padding: 7px 14px;
+  border: 1px solid var(--bdr);
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--sur);
+  color: var(--tx2);
+  transition: all .15s;
+  font-family: inherit;
+  min-height: 36px;
+}
+.pill.active { background: var(--grn); border-color: var(--grn); color: #fff; }
+
+/* ================================================================
+   REPORT
+================================================================ */
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+/* ================================================================
+   LOADING / SPINNER
+================================================================ */
+.spin {
+  width: 36px; height: 36px;
+  border: 3px solid var(--bdr);
+  border-top-color: var(--grn);
+  border-radius: 50%;
+  animation: sp .7s linear infinite;
+}
+@keyframes sp { to { transform: rotate(360deg); } }
+
+/* ================================================================
+   SAVE INDICATOR
+================================================================ */
+#save-ind {
+  font-size: 11px;
+  color: var(--tx3);
+  opacity: 0;
+  transition: opacity .3s;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   RESPONSIVE — MOBILE (max 767px)
+================================================================ */
+@media (max-width: 767px) {
+  /* Header */
+  header { padding: 0 12px; }
+  .hbals { gap: 8px; }
+  .hbal .hv { font-size: 11px; }
+  .hdiv { display: none; }
+  .hbal:nth-child(3) { display: none; } /* 銀行残高を非表示 */
+
+  /* Top nav → 非表示、bottom navに切り替え */
+  #top-nav { display: none; }
+  #bottom-nav { display: block; }
+
+  /* main: ボトムナビ分の余白 */
+  main {
+    padding: 12px 12px calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom));
+  }
+
+  /* Summary */
+  .sg4 { grid-template-columns: repeat(2, 1fr); }
+
+  /* Fee */
+  .fee-setting-row { grid-template-columns: repeat(2, 1fr); }
+  .fsrow           { grid-template-columns: repeat(2, 1fr); }
+
+  /* TX table: 日付・口座・金額・削除 の4列 */
+  .tx6 { grid-template-columns: 58px 1fr 80px 44px; }
+  .tx6 .tx-cat-col,
+  .tx6 .tx-del-col { display: none; }
+  .thr.tx6 span:nth-child(3),
+  .thr.tx6 span:nth-child(6) { display: none; }
+
+  /* Report */
+  .report-grid { grid-template-columns: 1fr; }
+
+  /* Forms */
+  .fg { grid-template-columns: 1fr; }
+  .fi.full, .fi { grid-column: unset; }
+
+  /* TX page layout: 1カラム */
+  #page-transactions .tx-layout { grid-template-columns: 1fr; }
+
+  /* Modal: 全幅シート */
+  .mbg { align-items: flex-end; padding: 0; }
+  .modal { border-radius: 16px 16px 0 0; max-width: 100%; margin: 0; }
+}
+
+/* ================================================================
+   RESPONSIVE — DESKTOP (min 768px)
+================================================================ */
+@media (min-width: 768px) {
+  main { padding: 20px; }
+
+  /* モーダルをセンター表示に */
+  .mbg { align-items: center; padding: 16px; }
+  .modal {
+    border-radius: 14px;
+    max-width: 500px;
+    margin: auto;
+    padding: 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.2);
+  }
+  .modal::before { display: none; }
+
+  /* toast位置をデスクトップ用に */
+  #toast { bottom: 20px; }
+}
