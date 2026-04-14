@@ -6,6 +6,7 @@
 <title>部活会計</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --bg:#f5f3ee;--sur:#fff;--sur2:#f0ede6;--bdr:#e2ddd5;
@@ -192,6 +193,8 @@ hr.dv{border:none;border-top:1px solid var(--bdr);margin:16px 0}
   /* Transactions input full width on mobile */
   #page-transactions .tx-layout{grid-template-columns:1fr}
 }
+.spin{width:36px;height:36px;border:3px solid var(--bdr);border-top-color:var(--grn);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 @media(min-width:768px){
   nav{padding:0 20px}
   .nav-btn{padding:11px 16px}
@@ -200,11 +203,29 @@ hr.dv{border:none;border-top:1px solid var(--bdr);margin:16px 0}
 </style>
 </head>
 <body>
-<div class="app">
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+  <div style="text-align:center">
+    <div style="width:56px;height:56px;background:var(--grn);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;margin:0 auto 16px">会</div>
+    <div style="font-size:22px;font-weight:700;margin-bottom:6px">部活会計</div>
+    <div style="font-size:14px;color:var(--tx2)">Googleアカウントでログインしてください</div>
+  </div>
+  <div id="google-signin-btn"></div>
+  <div id="login-error" style="color:var(--red);font-size:13px;display:none">アクセス権限がありません。会計アカウントでログインしてください。</div>
+</div>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loading-screen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:499;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div class="spin"></div>
+  <div id="loading-msg" style="font-size:13px;color:var(--tx2)">読み込み中...</div>
+</div>
+
+<div class="app" style="display:none" id="main-app">
 
 <!-- ===== Header ===== -->
 <header>
   <div class="logo"><div class="logo-ic">会</div>部活会計</div>
+  <div id="save-ind" style="font-size:11px;color:var(--tx3);opacity:0;transition:opacity .3s;flex-shrink:0">保存中...</div>
   <div class="hbals">
     <div class="hbal"><span class="hl">現金</span><span class="hv" id="h-cash" style="color:var(--csh)">¥0</span></div>
     <div class="hdiv"></div>
@@ -212,6 +233,7 @@ hr.dv{border:none;border-top:1px solid var(--bdr);margin:16px 0}
     <div class="hdiv"></div>
     <div class="hbal"><span class="hl">合計</span><span class="hv" id="h-total">¥0</span></div>
   </div>
+  <button class="btn bs sm" onclick="signOut()" style="flex-shrink:0;font-size:11px;padding:4px 10px">ログアウト</button>
 </header>
 
 <!-- ===== Nav ===== -->
@@ -426,7 +448,7 @@ hr.dv{border:none;border-top:1px solid var(--bdr);margin:16px 0}
 </div>
 
 </main>
-</div><!-- /.app -->
+</div><!-- /.app & #main-app -->
 
 <div id="toast"></div>
 
@@ -506,58 +528,362 @@ hr.dv{border:none;border-top:1px solid var(--bdr);margin:16px 0}
 
 <script>
 /* ================================================================
-   STATE
+   CONFIG
 ================================================================ */
-const ATTR_L={male:'男プレ',female:'女プレ',manager:'マネージャー',exec:'幹部上'};
-const ATTR_ORDER={male:0,female:1,manager:2,exec:3};
-const GRADE_ORDER={26:0,25:1,24:2,23:3,22:4,21:5};
-let nid=200;
-let S={
-  txs:[], members:[], feeRec:{}, pracCount:{},
-  fee:{base:{male:2000,female:2000,manager:1500,exec:500},adjs:[]},
-  acct:'cash', type:'income'
+const CLIENT_ID = '387302608037-et2svb68cnf7lm3gltpn67u3ovbplrjq.apps.googleusercontent.com';
+const SHEET_ID  = '1J-kv2Lwc4qBxVAvBGn0JCFS1BSc8UuXTwg1G2xY0nqc';
+const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+const API_BASE  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+
+// シート名定義
+const SH = {
+  TX:       'transactions',
+  MEMBERS:  'members',
+  FEE_REC:  'fee_records',
+  PRAC:     'practice_count',
+  FEE_SET:  'fee_settings',
 };
-let trendChart=null;
-let currentLedger='cash';
 
 /* ================================================================
-   INIT
+   AUTH STATE
 ================================================================ */
-function init(){
-  const today=new Date(), ym=toYM(today);
-  document.getElementById('tx-date').value=today.toISOString().split('T')[0];
-  document.getElementById('tr-date').value=today.toISOString().split('T')[0];
-  document.getElementById('fee-month').value=ym;
+let accessToken = null;
+let userEmail   = null;
 
-  S.members=[
-    {id:1,name:'山田 太郎',grade:'26',attr:'male'},
-    {id:2,name:'鈴木 花子',grade:'26',attr:'female'},
-    {id:3,name:'佐藤 健',  grade:'25',attr:'male'},
-    {id:4,name:'田中 美咲',grade:'25',attr:'manager'},
-    {id:5,name:'伊藤 翔',  grade:'24',attr:'exec'},
-    {id:6,name:'渡辺 葵',  grade:'24',attr:'female'},
-    {id:7,name:'中村 大輝',grade:'24',attr:'exec'},
-  ];
+/* ================================================================
+   APP STATE
+================================================================ */
+const ATTR_L     = {male:'男プレ', female:'女プレ', manager:'マネージャー', exec:'幹部上'};
+const ATTR_ORDER = {male:0, female:1, manager:2, exec:3};
+const GRADE_ORDER= {26:0,25:1,24:2,23:3,22:4,21:5};
+let nid = 1;
+let S = {
+  txs:[], members:[], feeRec:{}, pracCount:{},
+  fee:{base:{male:2000,female:2000,manager:1500,exec:500}, adjs:[]},
+  acct:'cash', type:'income'
+};
+let trendChart   = null;
+let currentLedger= 'cash';
+let isSaving     = false;
 
-  const prev=prevYM(ym);
-  S.txs=[
-    {id:1,date:`${prev}-05`,type:'income', acct:'bank',amount:52000,desc:'4月分部費振込',cat:'部費',note:''},
-    {id:2,date:`${prev}-10`,type:'expense',acct:'cash',amount:8500, desc:'消耗品購入',  cat:'消耗品',note:''},
-    {id:3,date:`${prev}-15`,type:'transfer',acct:'bank',toAcct:'cash',amount:20000,desc:'銀行から現金引き出し',cat:'振替',note:''},
-    {id:4,date:`${ym}-03`,  type:'income', acct:'cash',amount:9000, desc:'現金部費回収', cat:'部費',note:''},
-    {id:5,date:`${ym}-05`,  type:'income', acct:'bank',amount:43000,desc:'5月分部費振込',cat:'部費',note:''},
-    {id:6,date:`${ym}-08`,  type:'expense',acct:'cash',amount:12800,desc:'ボール購入',   cat:'用具・備品',note:'3個'},
-    {id:7,date:`${ym}-12`,  type:'expense',acct:'bank',amount:5400, desc:'大会参加費',   cat:'大会参加費',note:''},
-  ];
+/* ================================================================
+   GOOGLE SIGN-IN INIT
+================================================================ */
+window.addEventListener('load', () => {
+  // GISが読み込まれるまで少し待つ
+  const waitGIS = setInterval(() => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      clearInterval(waitGIS);
+      initGIS();
+    }
+  }, 100);
+});
 
-  S.feeRec[prev]={1:true,2:true,3:true,4:true,5:false,6:true,7:false};
-  S.pracCount[prev]={5:3,7:2};
-  S.feeRec[ym]={1:true,2:true,3:true,4:false,5:false,6:false,7:false};
-  S.pracCount[ym]={5:4,7:5};
-
-  render();
+function initGIS() {
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleCredential,
+    auto_select: true,
+  });
+  // まずトークン確認 → なければログイン画面を表示
+  tryRestoreToken();
 }
 
+function tryRestoreToken() {
+  const saved = sessionStorage.getItem('gapi_token');
+  if (saved) {
+    const obj = JSON.parse(saved);
+    if (obj.expiry > Date.now()) {
+      accessToken = obj.token;
+      userEmail   = obj.email;
+      startApp();
+      return;
+    }
+  }
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  setLoading(false);
+  document.getElementById('login-screen').style.display = 'flex';
+  google.accounts.id.renderButton(
+    document.getElementById('google-signin-btn'),
+    {theme:'outline', size:'large', text:'signin_with', locale:'ja', shape:'pill'}
+  );
+}
+
+async function handleCredential(response) {
+  // IDトークンをデコードしてemailを取得
+  const payload = JSON.parse(atob(response.credential.split('.')[1]));
+  userEmail = payload.email;
+
+  // OAuth2 implicit flow でアクセストークンを取得
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (tokenResp) => {
+      if (tokenResp.error) {
+        showLoginError();
+        return;
+      }
+      accessToken = tokenResp.access_token;
+      sessionStorage.setItem('gapi_token', JSON.stringify({
+        token: accessToken,
+        email: userEmail,
+        expiry: Date.now() + (tokenResp.expires_in - 60) * 1000
+      }));
+      document.getElementById('login-screen').style.display = 'none';
+      startApp();
+    }
+  });
+  client.requestAccessToken({prompt: ''});
+}
+
+function showLoginError() {
+  document.getElementById('login-error').style.display = 'block';
+}
+
+function signOut() {
+  google.accounts.id.disableAutoSelect();
+  sessionStorage.removeItem('gapi_token');
+  accessToken = null;
+  location.reload();
+}
+
+/* ================================================================
+   SHEETS API HELPERS
+================================================================ */
+async function sheetsGet(range) {
+  const url = `${API_BASE}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
+  const res = await fetch(url, {headers:{Authorization:`Bearer ${accessToken}`}});
+  if (!res.ok) throw new Error(`Sheets GET error: ${res.status}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+async function sheetsAppend(sheetName, rows) {
+  const url = `${API_BASE}/values/${encodeURIComponent(sheetName+'!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  const res = await fetch(url, {
+    method:'POST', headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},
+    body: JSON.stringify({values: rows})
+  });
+  if (!res.ok) throw new Error(`Sheets APPEND error: ${res.status}`);
+  return res.json();
+}
+
+async function sheetsClear(sheetName) {
+  const url = `${API_BASE}/values/${encodeURIComponent(sheetName+'!A2:Z9999')}:clear`;
+  const res = await fetch(url, {
+    method:'POST', headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'}
+  });
+  if (!res.ok) throw new Error(`Sheets CLEAR error: ${res.status}`);
+}
+
+async function sheetsWriteAll(sheetName, rows) {
+  await sheetsClear(sheetName);
+  if (rows.length > 0) await sheetsAppend(sheetName, rows);
+}
+
+async function sheetsUpdate(range, values) {
+  const url = `${API_BASE}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method:'PUT', headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},
+    body: JSON.stringify({values})
+  });
+  if (!res.ok) throw new Error(`Sheets UPDATE error: ${res.status}`);
+}
+
+async function ensureSheets() {
+  // スプレッドシートのメタデータ取得
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`,
+    {headers:{Authorization:`Bearer ${accessToken}`}});
+  if (!res.ok) throw new Error('スプレッドシートにアクセスできません');
+  const meta = await res.json();
+  const existing = meta.sheets.map(s => s.properties.title);
+
+  const needed = Object.values(SH);
+  const toAdd  = needed.filter(n => !existing.includes(n));
+
+  if (toAdd.length > 0) {
+    const addReqs = toAdd.map(title => ({addSheet:{properties:{title}}}));
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+      method:'POST', headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},
+      body: JSON.stringify({requests: addReqs})
+    });
+    // ヘッダ書き込み
+    const headers = {
+      [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','cat','note']],
+      [SH.MEMBERS]: [['id','name','grade','attr']],
+      [SH.FEE_REC]: [['id','member_id','ym','paid']],
+      [SH.PRAC]:    [['id','member_id','ym','count']],
+      [SH.FEE_SET]: [['id','attr','amount','type','from_ym','to_ym']],
+    };
+    for (const name of toAdd) {
+      await sheetsUpdate(`${name}!A1`, headers[name]);
+    }
+  }
+}
+
+/* ================================================================
+   LOAD FROM SHEETS
+================================================================ */
+async function loadAll() {
+  setLoading(true, 'データを読み込み中...');
+
+  await ensureSheets();
+
+  const [txRows, mRows, frRows, pcRows, fsRows] = await Promise.all([
+    sheetsGet(SH.TX+'!A2:I'),
+    sheetsGet(SH.MEMBERS+'!A2:D'),
+    sheetsGet(SH.FEE_REC+'!A2:D'),
+    sheetsGet(SH.PRAC+'!A2:D'),
+    sheetsGet(SH.FEE_SET+'!A2:F'),
+  ]);
+
+  // transactions
+  S.txs = txRows.map(r => ({
+    id:     +r[0], date:r[1], type:r[2], acct:r[3],
+    toAcct: r[4]||'', amount:+r[5], desc:r[6], cat:r[7], note:r[8]||''
+  }));
+  nid = S.txs.reduce((m,t)=>Math.max(m,t.id),0) + 1;
+
+  // members
+  S.members = mRows.map(r => ({id:+r[0], name:r[1], grade:r[2], attr:r[3]}));
+  nid = Math.max(nid, S.members.reduce((m,t)=>Math.max(m,t.id),0)+1);
+
+  // fee_records
+  S.feeRec = {};
+  frRows.forEach(r => {
+    const ym = r[2];
+    if (!S.feeRec[ym]) S.feeRec[ym] = {};
+    S.feeRec[ym][+r[1]] = r[3]==='true'||r[3]===true||r[3]==='TRUE';
+  });
+
+  // practice_count
+  S.pracCount = {};
+  pcRows.forEach(r => {
+    const ym = r[2];
+    if (!S.pracCount[ym]) S.pracCount[ym] = {};
+    S.pracCount[ym][+r[1]] = +r[3];
+  });
+
+  // fee_settings
+  S.fee = {base:{male:2000,female:2000,manager:1500,exec:500}, adjs:[]};
+  fsRows.forEach(r => {
+    if (r[3]==='base') {
+      S.fee.base[r[1]] = +r[2];
+    } else {
+      S.fee.adjs.push({id:+r[0], attr:r[1], amount:+r[2], from:r[4], to:r[5]});
+    }
+  });
+  // fee_settingsにbaseが無ければ書き込む
+  if (fsRows.length === 0) await saveFeeSettings();
+
+  setLoading(false);
+}
+
+/* ================================================================
+   SAVE TO SHEETS
+================================================================ */
+async function saveSheet(key, fn) {
+  if (isSaving) return;
+  isSaving = true;
+  showSaveIndicator(true);
+  try {
+    await fn();
+  } catch(e) {
+    console.error(e);
+    toast('保存に失敗しました。再試行してください。');
+  } finally {
+    isSaving = false;
+    showSaveIndicator(false);
+  }
+}
+
+async function saveTx() {
+  await saveSheet('tx', async () => {
+    const rows = S.txs.map(t => [t.id,t.date,t.type,t.acct,t.toAcct||'',t.amount,t.desc,t.cat,t.note||'']);
+    await sheetsWriteAll(SH.TX, rows);
+  });
+}
+
+async function saveMembers() {
+  await saveSheet('members', async () => {
+    const rows = S.members.map(m => [m.id,m.name,m.grade,m.attr]);
+    await sheetsWriteAll(SH.MEMBERS, rows);
+  });
+}
+
+async function saveFeeRec() {
+  await saveSheet('feeRec', async () => {
+    const rows = [];
+    let rid = 1;
+    Object.entries(S.feeRec).forEach(([ym, recs]) => {
+      Object.entries(recs).forEach(([mid, paid]) => {
+        rows.push([rid++, mid, ym, paid]);
+      });
+    });
+    await sheetsWriteAll(SH.FEE_REC, rows);
+  });
+}
+
+async function savePrac() {
+  await saveSheet('prac', async () => {
+    const rows = [];
+    let rid = 1;
+    Object.entries(S.pracCount).forEach(([ym, recs]) => {
+      Object.entries(recs).forEach(([mid, cnt]) => {
+        rows.push([rid++, mid, ym, cnt]);
+      });
+    });
+    await sheetsWriteAll(SH.PRAC, rows);
+  });
+}
+
+async function saveFeeSettings() {
+  await saveSheet('feeSet', async () => {
+    const rows = [];
+    let rid = 1;
+    Object.entries(S.fee.base).forEach(([attr, amt]) => rows.push([rid++,attr,amt,'base','','']));
+    S.fee.adjs.forEach(a => rows.push([a.id,a.attr,a.amount,'adj',a.from,a.to]));
+    await sheetsWriteAll(SH.FEE_SET, rows);
+  });
+}
+
+function showSaveIndicator(on) {
+  let el = document.getElementById('save-ind');
+  if (!el) return;
+  el.style.opacity = on ? '1' : '0';
+}
+
+/* ================================================================
+   START APP
+================================================================ */
+async function startApp() {
+  setLoading(true, 'データを読み込み中...');
+  try {
+    await loadAll();
+    document.getElementById('main-app').style.display = 'flex';
+    const today = new Date(), ym = toYM(today);
+    document.getElementById('tx-date').value  = today.toISOString().split('T')[0];
+    document.getElementById('tr-date').value  = today.toISOString().split('T')[0];
+    document.getElementById('fee-month').value= ym;
+    render();
+  } catch(e) {
+    console.error(e);
+    setLoading(true, 'データ読み込みに失敗しました。ページを再読み込みしてください。');
+  }
+}
+
+function setLoading(on, msg='') {
+  const el = document.getElementById('loading-screen');
+  el.style.display = on ? 'flex' : 'none';
+  if (msg) document.getElementById('loading-msg').textContent = msg;
+}
+
+/* ================================================================
+   UTIL
+================================================================ */
 function toYM(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function prevYM(ym){const d=new Date(ym+'-01');d.setMonth(d.getMonth()-1);return toYM(d)}
 function fmt(n){return'¥'+Number(n).toLocaleString()}
@@ -600,7 +926,7 @@ function calcFee(attr,ym,pc){
 }
 
 function sortedMembers(){
-  return [...S.members].sort((a,b)=>{
+  return[...S.members].sort((a,b)=>{
     const gd=GRADE_ORDER[parseInt(a.grade)]-GRADE_ORDER[parseInt(b.grade)];
     if(gd!==0)return gd;
     return ATTR_ORDER[a.attr]-ATTR_ORDER[b.attr];
@@ -614,9 +940,6 @@ function render(){
   renderHdr();renderDash();renderTx();renderMembers();renderFee();renderFeeView();renderReport();
 }
 
-/* ================================================================
-   HEADER
-================================================================ */
 function renderHdr(){
   const{cash,bank,total}=calcBal();
   document.getElementById('h-cash').textContent=fmt(cash);
@@ -636,13 +959,11 @@ function renderDash(){
     if(t.type==='income'){inc+=t.amount;if(t.acct==='cash')ci+=t.amount;else bi+=t.amount;}
     else if(t.type==='expense'){exp+=t.amount;if(t.acct==='cash')co+=t.amount;else bo+=t.amount;}
   });
-
   document.getElementById('dash-sg').innerHTML=`
     <div class="sc"><div class="lb"><span class="dot" style="background:var(--csh)"></span>現金残高</div><div class="vl" style="color:var(--csh)">${fmt(cash)}</div></div>
     <div class="sc"><div class="lb"><span class="dot" style="background:var(--bnk)"></span>銀行残高</div><div class="vl" style="color:var(--bnk)">${fmt(bank)}</div></div>
     <div class="sc"><div class="lb">今月収入</div><div class="vl" style="color:var(--grn)">${fmt(inc)}</div></div>
     <div class="sc"><div class="lb">今月支出</div><div class="vl" style="color:var(--red)">${fmt(exp)}</div></div>`;
-
   document.getElementById('acct-bd').innerHTML=`
     <div>
       <div style="font-size:12px;font-weight:500;color:var(--csh);margin-bottom:7px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--csh);display:inline-block"></span>現金</div>
@@ -654,14 +975,12 @@ function renderDash(){
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--tx2)">収入</span><span style="color:var(--grn);font-family:'DM Mono',monospace">${fmt(bi)}</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span style="color:var(--tx2)">支出</span><span style="color:var(--red);font-family:'DM Mono',monospace">${fmt(bo)}</span></div>
     </div>`;
-
   const fym=document.getElementById('fee-month')?.value||ym;
   const rec=S.feeRec[fym]||{};
   const tot=S.members.length,paid=Object.values(rec).filter(Boolean).length;
   const pct=tot>0?Math.round(paid/tot*100):0;
   document.getElementById('fee-dash-text').textContent=`${paid}名 / ${tot}名 納入済み（${pct}%）`;
   document.getElementById('fee-prog').style.width=pct+'%';
-
   const recent=[...S.txs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
   document.getElementById('recent-list').innerHTML=recent.length===0
     ?'<div class="empty">まだ取引がありません</div>'
@@ -669,20 +988,17 @@ function renderDash(){
 }
 
 /* ================================================================
-   TX ROW
+   TX ROW / RENDER
 ================================================================ */
 function txRow(t){
   let ab,amtStr,amtCls;
   if(t.type==='transfer'){
-    ab=`<span class="bdg transfer">振替</span>`;
-    amtStr=fmt(t.amount);amtCls='transfer';
-  } else {
+    ab=`<span class="bdg transfer">振替</span>`;amtStr=fmt(t.amount);amtCls='transfer';
+  }else{
     ab=`<span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span>`;
     amtStr=(t.type==='income'?'+':'-')+fmt(t.amount);amtCls=t.type;
   }
-  const catLabel=t.type==='transfer'
-    ?`${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}`
-    :t.cat;
+  const catLabel=t.type==='transfer'?`${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}`:t.cat;
   return`<div class="txr tx6">
     <span class="txdate">${t.date.slice(5)}</span>${ab}
     <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</span>
@@ -692,9 +1008,6 @@ function txRow(t){
   </div>`;
 }
 
-/* ================================================================
-   RENDER TX
-================================================================ */
 function renderTx(){
   const fa=document.getElementById('f-acct')?.value||'';
   const ft=document.getElementById('f-type')?.value||'';
@@ -706,9 +1019,6 @@ function renderTx(){
   el.innerHTML=txs.length===0?'<div class="empty">取引がありません</div>':txs.map(txRow).join('');
 }
 
-/* ================================================================
-   TYPE / ACCT TOGGLE
-================================================================ */
 function setType(t){
   S.type=t;
   ['income','expense','transfer'].forEach(x=>document.getElementById('t-'+x).classList.toggle('on',x===t));
@@ -721,10 +1031,7 @@ function setAcct(a){
   document.getElementById('a-bank').classList.toggle('on',a==='bank');
 }
 
-/* ================================================================
-   ADD TX
-================================================================ */
-function addTx(){
+async function addTx(){
   if(S.type==='transfer'){
     const date=document.getElementById('tr-date').value;
     const amount=parseInt(document.getElementById('tr-amt').value);
@@ -737,7 +1044,7 @@ function addTx(){
     if(from===to){toast('移動元と移動先が同じです');return;}
     S.txs.push({id:nid++,date,type:'transfer',acct:from,toAcct:to,amount,desc,cat:'振替',note});
     document.getElementById('tr-amt').value='';document.getElementById('tr-desc').value='';document.getElementById('tr-note').value='';
-  } else {
+  }else{
     const date=document.getElementById('tx-date').value;
     const amount=parseInt(document.getElementById('tx-amt').value);
     const desc=document.getElementById('tx-desc').value.trim();
@@ -749,12 +1056,17 @@ function addTx(){
     S.txs.push({id:nid++,date,type:S.type,acct:S.acct,amount,desc,cat,note});
     document.getElementById('tx-amt').value='';document.getElementById('tx-desc').value='';document.getElementById('tx-note').value='';
   }
-  toast('取引を追加しました ✓');render();
+  toast('追加しました ✓');
+  render();
+  await saveTx();
 }
 
-function delTx(id){
+async function delTx(id){
   if(!confirm('この取引を削除しますか？'))return;
-  S.txs=S.txs.filter(t=>t.id!==id);toast('削除しました');render();
+  S.txs=S.txs.filter(t=>t.id!==id);
+  render();
+  await saveTx();
+  toast('削除しました');
 }
 
 /* ================================================================
@@ -762,9 +1074,8 @@ function delTx(id){
 ================================================================ */
 function showLedger(type){
   currentLedger=type;
-  document.querySelectorAll('.pill').forEach((p,i)=>{
-    const types=['cash','bank','cat','summary'];
-    p.classList.toggle('active',types[i]===type);
+  document.querySelectorAll('#ledger-tabs .pill').forEach((p,i)=>{
+    p.classList.toggle('active',['cash','bank','cat','summary'][i]===type);
   });
   const el=document.getElementById('ledger-content');
   if(type==='cash')el.innerHTML=renderCashLedger('cash','現金出納帳');
@@ -774,100 +1085,49 @@ function showLedger(type){
 }
 
 function renderCashLedger(acct,title){
-  const txs=S.txs
-    .filter(t=>{
-      if(t.type==='transfer')return t.acct===acct||t.toAcct===acct;
-      return t.acct===acct;
-    })
-    .sort((a,b)=>a.date.localeCompare(b.date));
-
+  const txs=S.txs.filter(t=>{
+    if(t.type==='transfer')return t.acct===acct||t.toAcct===acct;
+    return t.acct===acct;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
   let bal=0,rows='',totalIn=0,totalOut=0;
   txs.forEach(t=>{
     let inAmt=0,outAmt=0,label=t.desc;
     if(t.type==='income'){inAmt=t.amount;bal+=t.amount;totalIn+=t.amount;}
     else if(t.type==='expense'){outAmt=t.amount;bal-=t.amount;totalOut+=t.amount;}
     else if(t.type==='transfer'){
-      if(t.acct===acct){outAmt=t.amount;bal-=t.amount;totalOut+=t.amount;label=`振替出金 → ${t.toAcct==='cash'?'現金':'銀行'}`;}
-      else{inAmt=t.amount;bal+=t.amount;totalIn+=t.amount;label=`振替入金 ← ${t.acct==='cash'?'現金':'銀行'}`;}
+      if(t.acct===acct){outAmt=t.amount;bal-=t.amount;totalOut+=t.amount;label=`振替出金→${t.toAcct==='cash'?'現金':'銀行'}`;}
+      else{inAmt=t.amount;bal+=t.amount;totalIn+=t.amount;label=`振替入金←${t.acct==='cash'?'現金':'銀行'}`;}
     }
-    const balCls=bal>=0?'bal-pos':'bal-neg';
-    rows+=`<tr>
-      <td class="num">${t.date}</td>
-      <td>${label}</td>
-      <td class="num" style="color:var(--grn)">${inAmt?fmtN(inAmt):''}</td>
-      <td class="num" style="color:var(--red)">${outAmt?fmtN(outAmt):''}</td>
-      <td class="num ${balCls}">${fmtN(bal)}</td>
-    </tr>`;
+    rows+=`<tr><td class="num">${t.date}</td><td>${label}</td><td class="num" style="color:var(--grn)">${inAmt?fmtN(inAmt):''}</td><td class="num" style="color:var(--red)">${outAmt?fmtN(outAmt):''}</td><td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td></tr>`;
   });
-
-  return`<div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:14px 16px 10px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">${title}</div>
-    <div style="overflow-x:auto">
-    <table class="ltbl">
-      <thead><tr><th>日付</th><th>摘要</th><th style="text-align:right">入金</th><th style="text-align:right">出金</th><th style="text-align:right">残高</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" class="empty">データがありません</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="2" style="font-weight:600">合計</td><td class="num" style="color:var(--grn)">${fmtN(totalIn)}</td><td class="num" style="color:var(--red)">${fmtN(totalOut)}</td><td class="num">${fmtN(bal)}</td></tr></tfoot>
-    </table></div></div>`;
+  return`<div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">${title}</div><div style="overflow-x:auto"><table class="ltbl"><thead><tr><th>日付</th><th>摘要</th><th style="text-align:right">入金</th><th style="text-align:right">出金</th><th style="text-align:right">残高</th></tr></thead><tbody>${rows||'<tr><td colspan="5" class="empty">データがありません</td></tr>'}</tbody><tfoot><tr><td colspan="2" style="font-weight:600">合計</td><td class="num" style="color:var(--grn)">${fmtN(totalIn)}</td><td class="num" style="color:var(--red)">${fmtN(totalOut)}</td><td class="num">${fmtN(bal)}</td></tr></tfoot></table></div></div>`;
 }
 
 function renderCatLedger(){
   const cats={};
-  S.txs.filter(t=>t.type!=='transfer').forEach(t=>{
-    if(!cats[t.cat])cats[t.cat]=[];
-    cats[t.cat].push(t);
-  });
+  S.txs.filter(t=>t.type!=='transfer').forEach(t=>{if(!cats[t.cat])cats[t.cat]=[];cats[t.cat].push(t);});
   let html='';
   Object.keys(cats).sort().forEach(cat=>{
     const txs=cats[cat].sort((a,b)=>a.date.localeCompare(b.date));
     let total=0,rows='';
-    txs.forEach(t=>{
-      const amt=t.type==='income'?t.amount:-t.amount;total+=amt;
-      rows+=`<tr>
-        <td class="num">${t.date}</td>
-        <td>${t.desc}</td>
-        <td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td>
-        <td class="num" style="color:${t.type==='income'?'var(--grn)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
-      </tr>`;
-    });
-    html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div style="padding:12px 16px 8px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center">
-        <span>${cat}</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:${total>=0?'var(--grn)':'var(--red)'}">${total>=0?'+':''}${fmtN(total)}</span>
-      </div>
-      <div style="overflow-x:auto"><table class="ltbl">
-        <thead><tr><th>日付</th><th>摘要</th><th>口座</th><th style="text-align:right">金額</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div></div>`;
+    txs.forEach(t=>{const amt=t.type==='income'?t.amount:-t.amount;total+=amt;rows+=`<tr><td class="num">${t.date}</td><td>${t.desc}</td><td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td><td class="num" style="color:${t.type==='income'?'var(--grn)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td></tr>`;});
+    html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px"><div style="padding:10px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between"><span>${cat}</span><span style="font-family:'DM Mono',monospace;font-size:13px;color:${total>=0?'var(--grn)':'var(--red)'}">${total>=0?'+':''}${fmtN(total)}</span></div><div style="overflow-x:auto"><table class="ltbl"><thead><tr><th>日付</th><th>摘要</th><th>口座</th><th style="text-align:right">金額</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   });
   return html||'<div class="empty">データがありません</div>';
 }
 
 function renderSummaryStatement(){
-  const ym=toYM(new Date());
-  const months=getMonths();
   let incTotal=0,expTotal=0;
   const catInc={},catExp={};
-
   S.txs.filter(t=>t.type!=='transfer').forEach(t=>{
     if(t.type==='income'){catInc[t.cat]=(catInc[t.cat]||0)+t.amount;incTotal+=t.amount;}
     else{catExp[t.cat]=(catExp[t.cat]||0)+t.amount;expTotal+=t.amount;}
   });
-
   let incRows='',expRows='';
   Object.keys(catInc).sort().forEach(c=>incRows+=`<tr><td style="padding-left:24px">${c}</td><td class="num" style="color:var(--grn)">${fmtN(catInc[c])}</td></tr>`);
   Object.keys(catExp).sort().forEach(c=>expRows+=`<tr><td style="padding-left:24px">${c}</td><td class="num" style="color:var(--red)">${fmtN(catExp[c])}</td></tr>`);
-
   const net=incTotal-expTotal;
-  return`<div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:14px 16px 10px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">収支計算書（全期間）</div>
-    <div style="overflow-x:auto"><table class="ltbl">
-      <tbody>
-        <tr><td style="font-weight:600;background:var(--grn-l);color:var(--grn);padding:8px 14px">【収入の部】</td><td class="num" style="background:var(--grn-l);color:var(--grn);font-weight:600">${fmtN(incTotal)}</td></tr>
-        ${incRows}
-        <tr><td style="font-weight:600;background:var(--red-l);color:var(--red);padding:8px 14px">【支出の部】</td><td class="num" style="background:var(--red-l);color:var(--red);font-weight:600">${fmtN(expTotal)}</td></tr>
-        ${expRows}
-        <tr style="border-top:2px solid var(--bdr)"><td style="font-weight:700;font-size:15px;padding:12px 14px">当期収支差額</td><td class="num" style="font-weight:700;font-size:15px;color:${net>=0?'var(--grn)':'var(--red)'}">${net>=0?'+':''}${fmtN(net)}</td></tr>
-      </tbody>
-    </table></div></div>`;
+  return`<div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">収支計算書（全期間）</div><div style="overflow-x:auto"><table class="ltbl"><tbody><tr><td style="font-weight:600;background:var(--grn-l);color:var(--grn);padding:8px 14px">【収入の部】</td><td class="num" style="background:var(--grn-l);color:var(--grn);font-weight:600">${fmtN(incTotal)}</td></tr>${incRows}<tr><td style="font-weight:600;background:var(--red-l);color:var(--red);padding:8px 14px">【支出の部】</td><td class="num" style="background:var(--red-l);color:var(--red);font-weight:600">${fmtN(expTotal)}</td></tr>${expRows}<tr style="border-top:2px solid var(--bdr)"><td style="font-weight:700;font-size:15px;padding:12px 14px">当期収支差額</td><td class="num" style="font-weight:700;font-size:15px;color:${net>=0?'var(--grn)':'var(--red)'}">${net>=0?'+':''}${fmtN(net)}</td></tr></tbody></table></div></div>`;
 }
 
 /* ================================================================
@@ -884,23 +1144,21 @@ function renderMembers(){
   if(fg)ms=ms.filter(m=>m.grade===fg);
   const tb=document.getElementById('m-tbody');if(!tb)return;
   tb.innerHTML=ms.length===0?'<tr><td colspan="4" class="empty">部員がいません</td></tr>'
-    :ms.map(m=>`<tr>
-      <td style="font-weight:500">${m.name}</td>
-      <td style="color:var(--tx2)">${m.grade}</td>
-      <td>${attrBadge(m.attr)}</td>
-      <td style="text-align:right"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
-    </tr>`).join('');
+    :ms.map(m=>`<tr><td style="font-weight:500">${m.name}</td><td style="color:var(--tx2)">${m.grade}</td><td>${attrBadge(m.attr)}</td><td style="text-align:right"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td></tr>`).join('');
 }
 
-function addMember(){
+async function addMember(){
   const name=document.getElementById('ma-name').value.trim();
   const grade=document.getElementById('ma-grade').value;
   const attr=document.getElementById('ma-attr').value;
   if(!name){toast('氏名を入力してください');return;}
   S.members.push({id:nid++,name,grade,attr});
   document.getElementById('ma-name').value='';
-  closeM('m-add');toast('追加しました ✓');render();
+  closeM('m-add');toast('追加しました ✓');
+  render();
+  await saveMembers();
 }
+
 function openEdit(id){
   const m=S.members.find(m=>m.id===id);if(!m)return;
   document.getElementById('me-id').value=id;
@@ -909,20 +1167,26 @@ function openEdit(id){
   document.getElementById('me-attr').value=m.attr;
   openM('m-edit');
 }
-function saveMember(){
+
+async function saveMember(){
   const id=parseInt(document.getElementById('me-id').value);
   const m=S.members.find(m=>m.id===id);if(!m)return;
   m.name=document.getElementById('me-name').value.trim();
   m.grade=document.getElementById('me-grade').value;
   m.attr=document.getElementById('me-attr').value;
-  closeM('m-edit');toast('更新しました ✓');render();
+  closeM('m-edit');toast('更新しました ✓');
+  render();
+  await saveMembers();
 }
-function deleteMember(){
+
+async function deleteMember(){
   const id=parseInt(document.getElementById('me-id').value);
   const m=S.members.find(m=>m.id===id);
   if(!confirm(`「${m?.name}」を削除しますか？`))return;
   S.members=S.members.filter(m=>m.id!==id);
-  closeM('m-edit');toast('削除しました');render();
+  closeM('m-edit');toast('削除しました');
+  render();
+  await saveMembers();
 }
 
 /* ================================================================
@@ -934,103 +1198,67 @@ function renderFee(){
   if(!S.pracCount[ym])S.pracCount[ym]={};
   const rec=S.feeRec[ym],pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
-  S.members.forEach(m=>{
-    const fee=calcFee(m.attr,ym,pc[m.id]||0);
-    if(rec[m.id]){paid++;coll+=fee;}else{unpaid++;rem+=fee;}
-  });
+  S.members.forEach(m=>{const fee=calcFee(m.attr,ym,pc[m.id]||0);if(rec[m.id]){paid++;coll+=fee;}else{unpaid++;rem+=fee;}});
   document.getElementById('fp-c').textContent=paid;
   document.getElementById('fu-c').textContent=unpaid;
   document.getElementById('fc-a').textContent=fmt(coll);
   document.getElementById('fr-a').textContent=fmt(rem);
-
   const ms=sortedMembers();
   const tb=document.getElementById('fee-tbody');if(!tb)return;
   tb.innerHTML=ms.map(m=>{
     const isPaid=!!rec[m.id];
     const fee=calcFee(m.attr,ym,pc[m.id]||0);
     const pi=m.attr==='exec'
-      ?`<input type="number" min="0" max="31" value="${pc[m.id]||0}"
-          style="width:62px;padding:5px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:13px;text-align:center"
-          onchange="setPrac(${m.id},'${ym}',this.value)">`
+      ?`<input type="number" min="0" max="31" value="${pc[m.id]||0}" style="width:62px;padding:5px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:13px;text-align:center" onchange="setPrac(${m.id},'${ym}',this.value)">`
       :`<span style="color:var(--tx3);font-size:12px">—</span>`;
-    return`<tr>
-      <td style="font-weight:500">${m.name}<br><span style="font-size:11px;color:var(--tx3)">${m.grade}</span></td>
-      <td>${attrBadge(m.attr)}</td>
-      <td>${pi}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:500">${fmt(fee)}</td>
-      <td style="text-align:center"><button class="btn sm" style="background:${isPaid?'var(--grn-l)':'var(--red-l)'};color:${isPaid?'var(--grn)':'var(--red)'};min-width:68px" onclick="toggleFee(${m.id},'${ym}')">${isPaid?'✓ 済み':'✕ 未納'}</button></td>
-    </tr>`;
+    return`<tr><td style="font-weight:500">${m.name}<br><span style="font-size:11px;color:var(--tx3)">${m.grade}</span></td><td>${attrBadge(m.attr)}</td><td>${pi}</td><td style="text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:500">${fmt(fee)}</td><td style="text-align:center"><button class="btn sm" style="background:${isPaid?'var(--grn-l)':'var(--red-l)'};color:${isPaid?'var(--grn)':'var(--red)'};min-width:68px" onclick="toggleFee(${m.id},'${ym}')">${isPaid?'✓ 済み':'✕ 未納'}</button></td></tr>`;
   }).join('');
-
   renderExecUnpaid();
 }
 
-function setPrac(id,ym,v){
+async function setPrac(id,ym,v){
   if(!S.pracCount[ym])S.pracCount[ym]={};
   S.pracCount[ym][id]=parseInt(v)||0;
   renderFee();
+  await savePrac();
 }
-function toggleFee(id,ym){
+
+async function toggleFee(id,ym){
   if(!S.feeRec[ym])S.feeRec[ym]={};
   S.feeRec[ym][id]=!S.feeRec[ym][id];
   renderFee();renderDash();
+  await saveFeeRec();
 }
 
-/* ================================================================
-   EXEC UNPAID TABLE
-================================================================ */
 function renderExecUnpaid(){
   const el=document.getElementById('exec-unpaid-wrap');if(!el)return;
   const execMembers=sortedMembers().filter(m=>m.attr==='exec');
   if(execMembers.length===0){el.innerHTML='<div class="empty">幹部上の部員がいません</div>';return;}
-
-  // 全月を収集
   const allYMs=new Set(Object.keys(S.feeRec));
   const months=[...allYMs].sort();
-
-  // 未納がある幹部上 × 月のマトリクスを構築
-  const data={}; // {memberId: {ym: fee}}
+  const data={};
   execMembers.forEach(m=>{
     const unpaidMonths={};
     months.forEach(ym=>{
-      const rec=S.feeRec[ym]||{};
-      if(rec[m.id]===false||rec[m.id]===undefined&&Object.keys(rec).length>0){
-        // 未納: feeRecにその月が存在し、かつfalse
-        if(S.feeRec[ym]&&S.feeRec[ym][m.id]===false){
-          const pc=(S.pracCount[ym]||{})[m.id]||0;
-          const fee=calcFee('exec',ym,pc);
-          unpaidMonths[ym]=fee;
-        }
+      if(S.feeRec[ym]&&S.feeRec[ym][m.id]===false){
+        const pc=(S.pracCount[ym]||{})[m.id]||0;
+        unpaidMonths[ym]=calcFee('exec',ym,pc);
       }
     });
     if(Object.keys(unpaidMonths).length>0)data[m.id]=unpaidMonths;
   });
-
   const activeMembers=execMembers.filter(m=>data[m.id]);
-  if(activeMembers.length===0){
-    el.innerHTML=`<div class="card"><div style="text-align:center;color:var(--grn);padding:20px;font-size:13px">✓ 未納の幹部上はいません</div></div>`;
-    return;
-  }
-
-  // 実際に未納がある月だけ列に
+  if(activeMembers.length===0){el.innerHTML=`<div class="card"><div style="text-align:center;color:var(--grn);padding:20px;font-size:13px">✓ 未納の幹部上はいません</div></div>`;return;}
   const unpaidMonths=new Set();
   activeMembers.forEach(m=>Object.keys(data[m.id]).forEach(ym=>unpaidMonths.add(ym)));
   const cols=[...unpaidMonths].sort();
-
-  let thead=`<tr><th>氏名</th>${cols.map(ym=>`<th>${ym.slice(0,7)}</th>`).join('')}<th>合計</th></tr>`;
+  let thead=`<tr><th>氏名</th>${cols.map(ym=>`<th>${ym}</th>`).join('')}<th>合計</th></tr>`;
   let tbody=activeMembers.map(m=>{
     let total=0;
-    const cells=cols.map(ym=>{
-      const fee=(data[m.id]||{})[ym];
-      if(fee!==undefined&&fee>0){total+=fee;return`<td>${fmtN(fee)}</td>`;}
-      return`<td style="color:var(--tx3)">—</td>`;
-    }).join('');
+    const cells=cols.map(ym=>{const fee=(data[m.id]||{})[ym];if(fee!==undefined&&fee>0){total+=fee;return`<td>${fmtN(fee)}</td>`;}return`<td style="color:var(--tx3)">—</td>`;}).join('');
     return`<tr><td>${m.name}<br><span style="font-size:11px;color:var(--tx3)">${m.grade}</span></td>${cells}<td class="total-col">${fmtN(total)}</td></tr>`;
   }).join('');
-
-  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden">
-    <div class="unp-wrap"><table class="unp-tbl" style="min-width:100%"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>
-  </div>`;
+  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div class="unp-wrap"><table class="unp-tbl" style="min-width:100%"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
 }
 
 /* ================================================================
@@ -1043,67 +1271,57 @@ function renderFeeView(){
     const adj=s.adjs.find(a=>a.attr===attr&&a.from<=ym&&ym<=a.to);
     const base=attr==='exec'?`${fmt(s.base.exec)}/回`:fmt(s.base[attr]);
     const adjHtml=adj?`<div style="margin-top:4px;font-size:11px;color:var(--amb);background:var(--amb-l);padding:2px 7px;border-radius:4px">調整中: ${fmt(adj.amount)}${attr==='exec'?'/回':''}</div>`:'';
-    return`<div class="fat-c">
-      <div style="margin-bottom:6px">${attrBadge(attr)}</div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500">${base}</div>
-      ${attr==='exec'?'<div style="font-size:10px;color:var(--tx3)">回数×単価</div>':''}
-      ${adjHtml}
-    </div>`;
+    return`<div class="fat-c"><div style="margin-bottom:6px">${attrBadge(attr)}</div><div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500">${base}</div>${attr==='exec'?'<div style="font-size:10px;color:var(--tx3)">回数×単価</div>':''}${adjHtml}</div>`;
   }).join('');
 }
-
-// Alias
-const renderFeeSettingView=renderFeeView;
 
 function openFeeModal(){
   const b=S.fee.base;
   ['male','female','manager','exec'].forEach(k=>document.getElementById('fs-'+k).value=b[k]);
   renderAdjList();openM('m-fee');
 }
-function saveFee(){
+
+async function saveFee(){
   S.fee.base={
     male:parseInt(document.getElementById('fs-male').value)||0,
     female:parseInt(document.getElementById('fs-female').value)||0,
     manager:parseInt(document.getElementById('fs-manager').value)||0,
-    exec:parseInt(document.getElementById('fs-exec').value)||0
+    exec:parseInt(document.getElementById('fs-exec').value)||0,
   };
-  closeM('m-fee');toast('部費設定を保存しました ✓');render();
+  closeM('m-fee');toast('部費設定を保存しました ✓');
+  render();
+  await saveFeeSettings();
 }
+
 function renderAdjList(){
   const el=document.getElementById('adj-list');if(!el)return;
-  const adjs=S.fee.adjs;
-  el.innerHTML=adjs.length===0?'<div style="color:var(--tx3);font-size:12px;margin-bottom:8px">一時調整なし</div>'
-    :adjs.map(a=>`<div class="adj-item">
-      <span>${attrBadge(a.attr)} <span style="font-family:\'DM Mono\',monospace;font-size:12px">${fmt(a.amount)}</span></span>
-      <span style="font-size:12px;color:var(--tx2)">${a.from}〜${a.to}</span>
-      <button class="btn bd sm" onclick="delAdj(${a.id})">削除</button>
-    </div>`).join('');
+  el.innerHTML=S.fee.adjs.length===0?'<div style="color:var(--tx3);font-size:12px;margin-bottom:8px">一時調整なし</div>'
+    :S.fee.adjs.map(a=>`<div class="adj-item">${attrBadge(a.attr)} <span style="font-family:\'DM Mono\',monospace;font-size:12px">${fmt(a.amount)}</span><span style="font-size:12px;color:var(--tx2)">${a.from}〜${a.to}</span><button class="btn bd sm" onclick="delAdj(${a.id})">削除</button></div>`).join('');
 }
-function addAdj(){
+
+async function addAdj(){
   const attr=document.getElementById('adj-attr').value;
   const amount=parseInt(document.getElementById('adj-amt').value);
   const from=document.getElementById('adj-from').value;
   const to=document.getElementById('adj-to').value;
   if(!amount||amount<0){toast('金額を入力してください');return;}
   if(!from||!to){toast('期間を入力してください');return;}
-  if(from>to){toast('期間の開始・終了を正しく設定してください');return;}
+  if(from>to){toast('開始・終了月を正しく設定してください');return;}
   S.fee.adjs.push({id:nid++,attr,amount,from,to});
   ['adj-amt','adj-from','adj-to'].forEach(id=>document.getElementById(id).value='');
   renderAdjList();toast('一時調整を追加しました ✓');
+  await saveFeeSettings();
 }
-function delAdj(id){
+
+async function delAdj(id){
   S.fee.adjs=S.fee.adjs.filter(a=>a.id!==id);
   renderAdjList();renderFeeView();renderFee();
+  await saveFeeSettings();
 }
 
 /* ================================================================
    REPORT
 ================================================================ */
-function getMonths(){
-  const yms=new Set(S.txs.map(t=>t.date.slice(0,7)));
-  return[...yms].sort();
-}
-
 function renderReport(){
   const monthly={};
   S.txs.forEach(t=>{
@@ -1115,35 +1333,12 @@ function renderReport(){
   const ms=Object.keys(monthly).sort().reverse();
   const mel=document.getElementById('r-monthly');
   if(mel)mel.innerHTML=ms.length===0?'<div class="empty">データがありません</div>'
-    :ms.map(ym=>{
-      const d=monthly[ym],bal=d.inc-d.exp;
-      return`<div style="padding:8px 0;border-bottom:1px solid var(--bdr)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-family:'DM Mono',monospace;font-size:12px">${ym}</span>
-          <span style="font-size:13px;font-weight:500;color:${bal>=0?'var(--grn)':'var(--red)'}">${bal>=0?'+':''}${fmt(bal)}</span>
-        </div>
-        <div style="font-size:11px;color:var(--tx2);display:flex;gap:8px;flex-wrap:wrap">
-          <span>現金 <span style="color:var(--grn)">${fmt(d.ci)}</span>/<span style="color:var(--red)">${fmt(d.co)}</span></span>
-          <span>銀行 <span style="color:var(--grn)">${fmt(d.bi)}</span>/<span style="color:var(--red)">${fmt(d.bo)}</span></span>
-        </div></div>`;
-    }).join('');
-
+    :ms.map(ym=>{const d=monthly[ym],bal=d.inc-d.exp;return`<div style="padding:7px 0;border-bottom:1px solid var(--bdr)"><div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-family:'DM Mono',monospace;font-size:12px">${ym}</span><span style="font-size:13px;font-weight:500;color:${bal>=0?'var(--grn)':'var(--red)'}">${bal>=0?'+':''}${fmt(bal)}</span></div><div style="font-size:11px;color:var(--tx2)">現金 <span style="color:var(--grn)">${fmt(d.ci)}</span>/<span style="color:var(--red)">${fmt(d.co)}</span> 銀行 <span style="color:var(--grn)">${fmt(d.bi)}</span>/<span style="color:var(--red)">${fmt(d.bo)}</span></div></div>`;}).join('');
   const cats={};
-  S.txs.filter(t=>t.type!=='transfer').forEach(t=>{
-    if(!cats[t.cat])cats[t.cat]={inc:0,exp:0};
-    if(t.type==='income')cats[t.cat].inc+=t.amount;else cats[t.cat].exp+=t.amount;
-  });
+  S.txs.filter(t=>t.type!=='transfer').forEach(t=>{if(!cats[t.cat])cats[t.cat]={inc:0,exp:0};if(t.type==='income')cats[t.cat].inc+=t.amount;else cats[t.cat].exp+=t.amount;});
   const cel=document.getElementById('r-cats');
   if(cel)cel.innerHTML=Object.keys(cats).sort().length===0?'<div class="empty">データがありません</div>'
-    :Object.keys(cats).sort().map(k=>{
-      const d=cats[k];
-      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)">
-        <span style="font-size:12px;background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span>
-        <span style="font-size:13px">${d.inc?`<span style="color:var(--grn)">${fmt(d.inc)}</span> `:''}${d.exp?`<span style="color:var(--red)">-${fmt(d.exp)}</span>`:''}</span>
-      </div>`;
-    }).join('');
-
-  // Trend table
+    :Object.keys(cats).sort().map(k=>{const d=cats[k];return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)"><span style="font-size:12px;background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span><span style="font-size:13px">${d.inc?`<span style="color:var(--grn)">${fmt(d.inc)}</span> `:''}${d.exp?`<span style="color:var(--red)">-${fmt(d.exp)}</span>`:''}</span></div>`;}).join('');
   renderTrendTable(monthly);
 }
 
@@ -1151,18 +1346,10 @@ function renderTrendTable(monthly){
   const el=document.getElementById('trend-table');if(!el)return;
   const ms=Object.keys(monthly).sort();
   if(ms.length===0){el.innerHTML='<tr><td class="empty">データがありません</td></tr>';return;}
-  let cumBal=0;
-  const rows=ms.map(ym=>{
-    const d=monthly[ym],bal=d.inc-d.exp;cumBal+=bal;
-    return`<tr>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${ym}</td>
-      <td class="num" style="color:var(--grn)">${fmtN(d.inc)}</td>
-      <td class="num" style="color:var(--red)">${fmtN(d.exp)}</td>
-      <td class="num" style="color:${bal>=0?'var(--grn)':'var(--red)'};font-weight:500">${bal>=0?'+':''}${fmtN(bal)}</td>
-      <td class="num" style="font-weight:600">${fmtN(cumBal)}</td>
-    </tr>`;
-  }).join('');
-  el.innerHTML=`<thead><tr><th>月</th><th style="text-align:right">収入</th><th style="text-align:right">支出</th><th style="text-align:right">差引</th><th style="text-align:right">累計残高</th></tr></thead><tbody>${rows}</tbody>`;
+  let cum=0;
+  el.innerHTML=`<thead><tr><th>月</th><th style="text-align:right">収入</th><th style="text-align:right">支出</th><th style="text-align:right">差引</th><th style="text-align:right">累計残高</th></tr></thead><tbody>${
+    ms.map(ym=>{const d=monthly[ym],bal=d.inc-d.exp;cum+=bal;return`<tr><td style="font-family:'DM Mono',monospace;font-size:12px">${ym}</td><td class="num" style="color:var(--grn)">${fmtN(d.inc)}</td><td class="num" style="color:var(--red)">${fmtN(d.exp)}</td><td class="num" style="color:${bal>=0?'var(--grn)':'var(--red)'};font-weight:500">${bal>=0?'+':''}${fmtN(bal)}</td><td class="num" style="font-weight:600">${fmtN(cum)}</td></tr>`;}).join('')
+  }</tbody>`;
 }
 
 function renderChart(){
@@ -1170,36 +1357,24 @@ function renderChart(){
   S.txs.filter(t=>t.type!=='transfer').forEach(t=>{
     const ym=t.date.slice(0,7);
     if(!monthly[ym])monthly[ym]={inc:0,exp:0};
-    if(t.type==='income')monthly[ym].inc+=t.amount;
-    else monthly[ym].exp+=t.amount;
+    if(t.type==='income')monthly[ym].inc+=t.amount;else monthly[ym].exp+=t.amount;
   });
   const labels=Object.keys(monthly).sort();
   const incData=labels.map(l=>monthly[l].inc);
   const expData=labels.map(l=>monthly[l].exp);
-  let cumBal=0;
-  const balData=labels.map(l=>{cumBal+=monthly[l].inc-monthly[l].exp;return cumBal;});
-
+  let cum=0;
+  const balData=labels.map(l=>{cum+=monthly[l].inc-monthly[l].exp;return cum;});
   const ctx=document.getElementById('trend-chart');if(!ctx)return;
   if(trendChart)trendChart.destroy();
   trendChart=new Chart(ctx,{
-    data:{
-      labels,
-      datasets:[
-        {type:'bar',label:'収入',data:incData,backgroundColor:'rgba(45,106,79,.65)',borderRadius:4,order:2},
-        {type:'bar',label:'支出',data:expData,backgroundColor:'rgba(192,57,43,.65)',borderRadius:4,order:2},
-        {type:'line',label:'累計残高',data:balData,borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.3,order:1,yAxisID:'y2'},
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
+    data:{labels,datasets:[
+      {type:'bar',label:'収入',data:incData,backgroundColor:'rgba(45,106,79,.65)',borderRadius:4,order:2},
+      {type:'bar',label:'支出',data:expData,backgroundColor:'rgba(192,57,43,.65)',borderRadius:4,order:2},
+      {type:'line',label:'累計残高',data:balData,borderColor:'#1d4ed8',backgroundColor:'rgba(29,78,216,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.3,order:1,yAxisID:'y2'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{labels:{font:{size:11},boxWidth:12}}},
-      scales:{
-        x:{ticks:{font:{size:11}},grid:{display:false}},
-        y:{ticks:{font:{size:11},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(0,0,0,.05)'}},
-        y2:{position:'right',ticks:{font:{size:11},callback:v=>'¥'+v.toLocaleString()},grid:{display:false}}
-      }
-    }
+      scales:{x:{ticks:{font:{size:11}},grid:{display:false}},y:{ticks:{font:{size:11},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(0,0,0,.05)'}},y2:{position:'right',ticks:{font:{size:11},callback:v=>'¥'+v.toLocaleString()},grid:{display:false}}}}
   });
 }
 
@@ -1208,22 +1383,15 @@ function renderChart(){
 ================================================================ */
 function exportCSV(){
   const h=['日付','口座','移動先','種別','金額','摘要','科目','備考'];
-  const rows=S.txs.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[
-    t.date,
-    t.acct==='cash'?'現金':'銀行預金',
-    t.type==='transfer'?(t.toAcct==='cash'?'現金':'銀行預金'):'',
-    t.type==='income'?'収入':t.type==='expense'?'支出':'口座振替',
-    t.amount,t.desc,t.cat,t.note
-  ]);
+  const rows=S.txs.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,t.acct==='cash'?'現金':'銀行預金',t.type==='transfer'?(t.toAcct==='cash'?'現金':'銀行預金'):'',t.type==='income'?'収入':t.type==='expense'?'支出':'口座振替',t.amount,t.desc,t.cat,t.note]);
   const csv=[h,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`部活会計_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`部活会計_${new Date().toISOString().slice(0,10)}.csv`;a.click();
   toast('CSVをダウンロードしました ✓');
 }
 
 /* ================================================================
-   MODAL / TOAST
+   MODAL / TOAST / UTIL
 ================================================================ */
 function openM(id){document.getElementById(id).classList.add('open')}
 function closeM(id){document.getElementById(id).classList.remove('open')}
@@ -1233,14 +1401,6 @@ function toast(msg){
   el.textContent=msg;el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),2200);
 }
-
-/* ================================================================
-   MISSING: fee-setting-row element fix
-================================================================ */
-// fee-setting-view is the correct id in HTML
-function renderFeeView2(){renderFeeView();}
-
-init();
 </script>
 </body>
 </html>
