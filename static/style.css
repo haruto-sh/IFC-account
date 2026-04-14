@@ -554,6 +554,14 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
 @media (min-width: 768px) {
   main { padding: 20px; }
 
+  /* TX page layout: 2カラム */
+  #page-transactions .tx-layout {
+    display: grid;
+    grid-template-columns: 290px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
   /* モーダルをセンター表示に */
   .mbg { align-items: center; padding: 16px; }
   .modal {
