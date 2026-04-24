@@ -1023,3 +1023,114 @@ function toast(msg) {
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2200);
 }
+
+/* ================================================================
+   BOTTOM SHEET — スマホ収支入力
+================================================================ */
+
+let bsType = 'income';
+let bsAcct = 'cash';
+
+function openBottomSheet() {
+  const today = new Date();
+  document.getElementById('bs-date').value    = today.toISOString().split('T')[0];
+  document.getElementById('bs-tr-date').value = today.toISOString().split('T')[0];
+  document.getElementById('bs-sheet').classList.add('open');
+  document.getElementById('bs-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // 金額欄にフォーカス
+  setTimeout(() => document.getElementById('bs-amt')?.focus(), 350);
+}
+
+function closeBottomSheet() {
+  document.getElementById('bs-sheet').classList.remove('open');
+  document.getElementById('bs-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function setBsType(type, el) {
+  bsType = type;
+  el.closest('.bs-tog3').querySelectorAll('.bs-tbtn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('bs-normal').style.display   = type === 'transfer' ? 'none' : 'block';
+  document.getElementById('bs-transfer').style.display = type === 'transfer' ? 'block' : 'none';
+}
+
+function setBsAcct(acct, el) {
+  bsAcct = acct;
+  el.closest('.bs-tog2').querySelectorAll('.bs-abtn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+async function addTxFromSheet() {
+  if (bsType === 'transfer') {
+    const amount = parseInt(document.getElementById('bs-tr-amt').value);
+    const from   = document.getElementById('bs-tr-from').value;
+    const to     = document.getElementById('bs-tr-to').value;
+    const date   = document.getElementById('bs-tr-date').value;
+    const desc   = document.getElementById('bs-tr-desc').value.trim() ||
+                   `${from === 'cash' ? '現金' : '銀行'}→${to === 'cash' ? '現金' : '銀行'}`;
+    if (!amount || amount <= 0) { toast('金額を入力してください'); return; }
+    if (!date)                  { toast('日付を入力してください'); return; }
+    if (from === to)            { toast('移動元と移動先が同じです'); return; }
+    S.txs.push({ id: nid++, date, type: 'transfer', acct: from, toAcct: to, amount, desc, cat: '振替', note: '' });
+    document.getElementById('bs-tr-amt').value  = '';
+    document.getElementById('bs-tr-desc').value = '';
+  } else {
+    const amount = parseInt(document.getElementById('bs-amt').value);
+    const desc   = document.getElementById('bs-desc').value.trim();
+    const date   = document.getElementById('bs-date').value;
+    const cat    = document.getElementById('bs-cat').value;
+    const note   = document.getElementById('bs-note').value.trim();
+    if (!amount || amount <= 0) { toast('金額を入力してください'); return; }
+    if (!desc)                  { toast('摘要を入力してください'); return; }
+    if (!date)                  { toast('日付を入力してください'); return; }
+    S.txs.push({ id: nid++, date, type: bsType, acct: bsAcct, amount, desc, cat, note });
+    document.getElementById('bs-amt').value  = '';
+    document.getElementById('bs-desc').value = '';
+    document.getElementById('bs-note').value = '';
+  }
+  closeBottomSheet();
+  toast('追加しました ✓');
+  render();
+  await saveTx();
+}
+
+/* スマホ用フィルタをPCフィルタと同期して renderTx が両方に反映されるよう上書き */
+const _origRenderTx = renderTx;
+function renderTx() {
+  // PCフィルタ
+  const fa = document.getElementById('f-acct')?.value || '';
+  const ft = document.getElementById('f-type')?.value || '';
+  // SPフィルタ（存在する場合）
+  const faSp = document.getElementById('f-acct-sp')?.value || '';
+  const ftSp = document.getElementById('f-type-sp')?.value || '';
+
+  const filterAcct = fa || faSp;
+  const filterType = ft || ftSp;
+
+  let txs = [...S.txs].sort((a, b) => b.date.localeCompare(a.date));
+  if (filterAcct) txs = txs.filter(t => t.acct === filterAcct || (t.type === 'transfer' && t.toAcct === filterAcct));
+  if (filterType) txs = txs.filter(t => t.type === filterType);
+
+  const html = txs.length === 0
+    ? '<div class="empty">取引がありません</div>'
+    : txs.map(txRow).join('');
+
+  const pcList = document.getElementById('tx-list');
+  const spList = document.getElementById('tx-list-sp');
+  if (pcList) pcList.innerHTML = html;
+  if (spList) spList.innerHTML = html;
+}
+
+/* スワイプで閉じる（任意） */
+(function initSwipeClose() {
+  let startY = 0;
+  const sheet = document.getElementById('bs-sheet');
+  if (!sheet) return;
+  sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+  sheet.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 80) closeBottomSheet();
+  }, { passive: true });
+})();
