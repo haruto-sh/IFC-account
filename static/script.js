@@ -210,12 +210,16 @@ async function loadAll() {
     sheetsGet(SH.FEE_SET + '!A2:F'),
   ]);
 
-  S.txs = txRows.map(r => ({
-    id:r[0]|0, date:r[1], type:r[2], acct:r[3],
-    toAcct:r[4]||'', amount:r[5]|0, desc:r[6], cat:r[7], note:r[8]||'',
-  }));
+  S.txs = txRows
+    .filter(r => r[0] && r[1] && r[2])  // id・date・typeが存在する行のみ
+    .map(r => ({
+      id:r[0]|0, date:String(r[1]), type:r[2], acct:r[3]||'cash',
+      toAcct:r[4]||'', amount:r[5]|0, desc:r[6]||'', cat:r[7]||'その他', note:r[8]||'',
+    }));
 
-  S.members = mRows.map(r => ({ id:r[0]|0, name:r[1], grade:r[2], attr:r[3] }));
+  S.members = mRows
+    .filter(r => r[0] && r[1])  // id・nameが存在する行のみ
+    .map(r => ({ id:r[0]|0, name:String(r[1]), grade:r[2]||'', attr:r[3]||'male' }));
 
   nid = Math.max(
     S.txs.reduce((m,t) => Math.max(m,t.id), 0),
@@ -356,8 +360,8 @@ function calcBal() {
     else if (t.type==='expense')
       { if(t.acct==='cash') cash-=t.amount; else bank-=t.amount; }
     else if (t.type==='transfer') {
-      if(t.acct==='cash') cash-=t.amount; else bank-=t.amount;
-      if(t.toAcct==='cash') cash+=t.amount; else bank+=t.amount;
+      if (t.acct==='cash') cash-=t.amount; else bank-=t.amount;
+      if (t.toAcct==='cash') cash+=t.amount; else if (t.toAcct==='bank') bank+=t.amount;
     }
   });
   return { cash, bank, total:cash+bank };
@@ -402,7 +406,7 @@ function renderDash() {
   const ym = toYM(new Date());
   let inc=0,exp=0,ci=0,co=0,bi=0,bo=0;
   S.txs.forEach(t => {
-    if (!t.date.startsWith(ym)) return;
+    if (!t.date || !t.date.startsWith(ym)) return;
     if (t.type==='income')  { inc+=t.amount; t.acct==='cash'?ci+=t.amount:bi+=t.amount; }
     if (t.type==='expense') { exp+=t.amount; t.acct==='cash'?co+=t.amount:bo+=t.amount; }
   });
@@ -887,6 +891,7 @@ async function delAdj(id) {
 function renderReport() {
   const monthly = {};
   S.txs.forEach(t => {
+    if (!t.date) return;
     const ym = t.date.slice(0,7);
     if (!monthly[ym]) monthly[ym] = { inc:0,exp:0,ci:0,co:0,bi:0,bo:0 };
     if (t.type==='income')  { monthly[ym].inc+=t.amount; t.acct==='cash'?monthly[ym].ci+=t.amount:monthly[ym].bi+=t.amount; }
