@@ -361,10 +361,6 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 .txamt.expense  { color: var(--red); }
 .txamt.transfer { color: var(--tx2); }
 
-/* 旧グリッド用クラス（後方互換） */
-.tx6 { }
-.tx-cat-col { }
-.tx-del-col { }
 
 /* ================================================================
    LEDGER TABLES
@@ -386,7 +382,7 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 .mtbl th { background: var(--sur2); padding: 8px 12px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); }
 .mtbl td { padding: 10px 12px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; }
 .mtbl tr:last-child td { border-bottom: none; }
-.mtbl tr:active td { background: var(--sur2); }
+.mtbl tr:hover td { background: var(--sur2); }
 
 /* ================================================================
    FEE
@@ -568,12 +564,9 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   .fee-setting-row { grid-template-columns: repeat(2, 1fr); }
   .fsrow           { grid-template-columns: repeat(2, 1fr); }
 
-  /* TX table: 日付・口座・金額・削除 の4列 */
-  .tx6 { grid-template-columns: 58px 1fr 80px 44px; }
-  .tx6 .tx-cat-col,
-  .tx6 .tx-del-col { display: none; }
-  .thr.tx6 span:nth-child(3),
-  .thr.tx6 span:nth-child(6) { display: none; }
+  /* TX table: 日付・金額・削除 の3列 */
+  .thr span:nth-child(3),
+  .thr span:nth-child(6) { display: none; }
 
   /* Report */
   .report-grid { grid-template-columns: 1fr; }
@@ -749,6 +742,7 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   padding: 0;
   outline: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 .bs-amt-input::placeholder { color: var(--bdr); }
 
@@ -814,7 +808,6 @@ select.bs-input {
   cursor: pointer;
   z-index: 90;
   box-shadow: 0 4px 16px rgba(45,106,79,.4);
-  display: none;
   align-items: center;
   justify-content: center;
   transition: transform .15s, box-shadow .15s;
