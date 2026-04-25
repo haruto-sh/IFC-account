@@ -1,190 +1,118 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#2d6a4f">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232d6a4f'/><text x='50%' y='50%' dominant-baseline='central' text-anchor='middle' font-size='18' font-family='sans-serif' fill='white'>会</text></svg>">
-<title>部活会計</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="static/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
-<body>
-
-<!-- ===== LOGIN SCREEN ===== -->
-<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:24px">
-  <div style="text-align:center">
-    <div style="width:56px;height:56px;background:var(--grn);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;margin:0 auto 16px">会</div>
-    <div style="font-size:22px;font-weight:700;margin-bottom:6px">部活会計</div>
-    <div style="font-size:14px;color:var(--tx2)">Googleアカウントでログインしてください</div>
-  </div>
-  <div id="google-signin-btn"></div>
-  <div id="login-error" style="color:var(--red);font-size:13px;display:none">アクセス権限がありません。会計アカウントでログインしてください。</div>
-</div>
-
-<!-- ===== LOADING SCREEN ===== -->
-<div id="loading-screen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:499;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-  <div class="spin"></div>
-  <div id="loading-msg" style="font-size:13px;color:var(--tx2)">読み込み中...</div>
-</div>
-
-<!-- ===== MAIN APP ===== -->
-<div class="app" style="display:none" id="main-app">
-
-  <!-- Header -->
-  <header>
-    <div class="logo"><div class="logo-ic">会</div>部活会計</div>
-    <div id="save-ind">保存中...</div>
-    <div class="hbals">
-      <div class="hbal"><span class="hl">現金</span><span class="hv" id="h-cash" style="color:var(--csh)">¥0</span></div>
-      <div class="hdiv"></div>
-      <div class="hbal"><span class="hl">銀行</span><span class="hv" id="h-bank" style="color:var(--bnk)">¥0</span></div>
-      <div class="hdiv"></div>
-      <div class="hbal"><span class="hl">合計</span><span class="hv" id="h-total">¥0</span></div>
-    </div>
-    <button class="btn bs sm" onclick="signOut()" style="flex-shrink:0;font-size:11px;padding:4px 10px">ログアウト</button>
-  </header>
-
-  <!-- Desktop top nav -->
-  <nav id="top-nav">
-    <button class="nav-btn active" onclick="showPage('dashboard')">ダッシュボード</button>
-    <button class="nav-btn" onclick="showPage('transactions')">収支入力</button>
-    <button class="nav-btn" onclick="showPage('ledger')">帳簿</button>
-    <button class="nav-btn" onclick="showPage('members')">部員名簿</button>
-    <button class="nav-btn" onclick="showPage('fees')">部費管理</button>
-    <button class="nav-btn" onclick="showPage('report')">レポート</button>
-  </nav>
-
-  <!-- Mobile bottom nav -->
-  <nav id="bottom-nav">
-    <div class="bnav-inner">
-      <button class="bnav-btn active" onclick="showPage('dashboard')">
-        <span class="bnav-icon">🏠</span>
-        <span class="bnav-label">ホーム</span>
-      </button>
-      <button class="bnav-btn" onclick="showPage('transactions')">
-        <span class="bnav-icon">＋</span>
-        <span class="bnav-label">収支入力</span>
-      </button>
-      <button class="bnav-btn" onclick="showPage('ledger')">
-        <span class="bnav-icon">📒</span>
-        <span class="bnav-label">帳簿</span>
-      </button>
-      <button class="bnav-btn" onclick="showPage('members')">
-        <span class="bnav-icon">👥</span>
-        <span class="bnav-label">部員</span>
-      </button>
-      <button class="bnav-btn" onclick="showPage('fees')">
-        <span class="bnav-icon">💴</span>
-        <span class="bnav-label">部費</span>
-      </button>
-      <button class="bnav-btn" onclick="showPage('report')">
-        <span class="bnav-icon">📊</span>
-        <span class="bnav-label">レポート</span>
-      </button>
-    </div>
-  </nav>
-
-  <main>
-
-    <!-- ===== Dashboard ===== -->
-    <div class="page active" id="page-dashboard">
-      <div class="sg sg4" id="dash-sg"></div>
-
-      <div class="card" style="margin-bottom:12px">
-        <div class="ctitle">今月の口座別収支内訳</div>
-        <div id="acct-bd" style="display:grid;grid-template-columns:1fr 1fr;gap:20px"></div>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#2d6a4f">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232d6a4f'/><text x='50%' y='50%' dominant-baseline='central' text-anchor='middle' font-size='18' font-family='sans-serif' fill='white'>会</text></svg>">
+    <title>部活会計</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <!-- ===== LOGIN SCREEN ===== -->
+    <div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+      <div style="text-align:center">
+        <div style="width:56px;height:56px;background:var(--grn);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;margin:0 auto 16px">会</div>
+        <div style="font-size:22px;font-weight:700;margin-bottom:6px">部活会計</div>
+        <div style="font-size:14px;color:var(--tx2)">Googleアカウントでログインしてください</div>
       </div>
+      <div id="google-signin-btn"></div>
+      <div id="login-error" style="color:var(--red);font-size:13px;display:none">アクセス権限がありません。会計アカウントでログインしてください。</div>
+    </div>
 
-      <div class="card" style="margin-bottom:12px">
-        <div class="ctitle">部費回収状況（今月）</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-          <span id="fee-dash-text" style="font-size:13px;color:var(--tx2)">—</span>
-          <button class="btn bs sm" onclick="showPage('fees')">詳細へ</button>
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loading-screen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:499;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+      <div class="spin"></div>
+      <div id="loading-msg" style="font-size:13px;color:var(--tx2)">読み込み中...</div>
+    </div>
+
+    <!-- ===== MAIN APP ===== -->
+    <div class="app" style="display:none" id="main-app">
+
+      <!-- Header -->
+      <header>
+        <div class="logo"><div class="logo-ic">会</div>部活会計</div>
+        <div id="save-ind">保存中...</div>
+        <div class="hbals">
+          <div class="hbal"><span class="hl">現金</span><span class="hv" id="h-cash" style="color:var(--csh)">¥0</span></div>
+          <div class="hdiv"></div>
+          <div class="hbal"><span class="hl">銀行</span><span class="hv" id="h-bank" style="color:var(--bnk)">¥0</span></div>
+          <div class="hdiv"></div>
+          <div class="hbal"><span class="hl">合計</span><span class="hv" id="h-total">¥0</span></div>
         </div>
-        <div class="pbar"><div class="pfill" id="fee-prog" style="width:0%"></div></div>
-      </div>
+        <button class="btn bs sm" onclick="signOut()" style="flex-shrink:0;font-size:11px;padding:4px 10px">ログアウト</button>
+      </header>
 
-      <div class="sh">
-        <div class="st">最近の取引</div>
-        <button class="btn bs sm" onclick="showPage('transactions')">すべて見る</button>
-      </div>
-      <div class="thr tx6">
-        <span>日付</span><span></span><span>摘要</span>
-        <span class="tx-cat-col">科目</span>
-        <span style="text-align:right">金額</span>
-        <span class="tx-del-col"></span>
-      </div>
-      <div id="recent-list"></div>
-    </div>
+      <!-- Desktop top nav -->
+      <nav id="top-nav">
+        <button class="nav-btn active" onclick="showPage('dashboard')">ダッシュボード</button>
+        <button class="nav-btn" onclick="showPage('transactions')">収支入力</button>
+        <button class="nav-btn" onclick="showPage('ledger')">帳簿</button>
+        <button class="nav-btn" onclick="showPage('members')">部員名簿</button>
+        <button class="nav-btn" onclick="showPage('fees')">部費管理</button>
+        <button class="nav-btn" onclick="showPage('report')">レポート</button>
+      </nav>
 
-    <!-- ===== Transactions ===== -->
-    <div class="page" id="page-transactions">
-
-      <!-- PC用レイアウト -->
-      <div class="tx-pc-layout">
-        <div class="card">
-          <div class="ctitle">取引を追加</div>
-          <div style="margin-bottom:4px"><label>種別</label></div>
-          <div class="tog3">
-            <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
-            <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
-            <button class="tbtn transfer"  id="t-transfer" onclick="setType('transfer')">口座振替</button>
-          </div>
-          <div id="normal-fields">
-            <div style="margin-bottom:4px"><label>口座</label></div>
-            <div class="tog2">
-              <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
-              <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
-            </div>
-            <div class="fg">
-              <div class="fi"><label>日付</label><input type="date" id="tx-date"></div>
-              <div class="fi"><label>金額（円）</label><input type="number" id="tx-amt" placeholder="0" min="0" inputmode="numeric"></div>
-              <div class="fi full"><label>摘要</label><input type="text" id="tx-desc" placeholder="例：5月分部費、備品購入"></div>
-              <div class="fi full">
-                <label>科目</label>
-                <select id="tx-cat">
-                  <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
-                  <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
-                </select>
-              </div>
-              <div class="fi full"><label>備考</label><textarea id="tx-note" placeholder="任意"></textarea></div>
-            </div>
-          </div>
-          <div id="transfer-fields" style="display:none">
-            <div class="fg">
-              <div class="fi"><label>日付</label><input type="date" id="tr-date"></div>
-              <div class="fi"><label>金額（円）</label><input type="number" id="tr-amt" placeholder="0" min="0" inputmode="numeric"></div>
-              <div class="fi"><label>移動元</label>
-                <select id="tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
-              </div>
-              <div class="fi"><label>移動先</label>
-                <select id="tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
-              </div>
-              <div class="fi full"><label>摘要</label><input type="text" id="tr-desc" placeholder="例：銀行から現金引き出し"></div>
-              <div class="fi full"><label>備考</label><textarea id="tr-note" placeholder="任意"></textarea></div>
-            </div>
-          </div>
-          <button class="btn bp" style="width:100%;margin-top:12px" onclick="addTx()">追加する</button>
+      <!-- Mobile bottom nav -->
+      <nav id="bottom-nav">
+        <div class="bnav-inner">
+          <button class="bnav-btn active" onclick="showPage('dashboard')">
+            <span class="bnav-icon">🏠</span>
+            <span class="bnav-label">ホーム</span>
+          </button>
+          <button class="bnav-btn" onclick="showPage('transactions')">
+            <span class="bnav-icon">＋</span>
+            <span class="bnav-label">収支入力</span>
+          </button>
+          <button class="bnav-btn" onclick="showPage('ledger')">
+            <span class="bnav-icon">📒</span>
+            <span class="bnav-label">帳簿</span>
+          </button>
+          <button class="bnav-btn" onclick="showPage('members')">
+            <span class="bnav-icon">👥</span>
+            <span class="bnav-label">部員</span>
+          </button>
+          <button class="bnav-btn" onclick="showPage('fees')">
+            <span class="bnav-icon">💴</span>
+            <span class="bnav-label">部費</span>
+          </button>
+          <button class="bnav-btn" onclick="showPage('report')">
+            <span class="bnav-icon">📊</span>
+            <span class="bnav-label">レポート</span>
+          </button>
         </div>
-        <div>
+      </nav>
+
+      <main>
+
+        <!-- ===== Dashboard ===== -->
+        <div class="page active" id="page-dashboard">
+          <div class="sg sg4" id="dash-sg"></div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="ctitle">今月の口座別収支内訳</div>
+            <div id="acct-bd" style="display:grid;grid-template-columns:1fr 1fr;gap:20px"></div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <div class="ctitle">部費回収状況（今月）</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <span id="fee-dash-text" style="font-size:13px;color:var(--tx2)">—</span>
+              <button class="btn bs sm" onclick="showPage('fees')">詳細へ</button>
+            </div>
+            <div class="pbar"><div class="pfill" id="fee-prog" style="width:0%"></div></div>
+          </div>
+
           <div class="sh">
-            <div class="st">取引一覧</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <select id="f-acct" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
-                <option value="">すべての口座</option><option value="cash">現金</option><option value="bank">銀行</option>
-              </select>
-              <select id="f-type" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
-                <option value="">すべて</option><option value="income">収入</option>
-                <option value="expense">支出</option><option value="transfer">口座振替</option>
-              </select>
-            </div>
+            <div class="st">最近の取引</div>
+            <button class="btn bs sm" onclick="showPage('transactions')">すべて見る</button>
           </div>
           <div class="thr tx6">
             <span>日付</span><span></span><span>摘要</span>
@@ -192,319 +120,448 @@
             <span style="text-align:right">金額</span>
             <span class="tx-del-col"></span>
           </div>
-          <div id="tx-list"></div>
+          <div id="recent-list"></div>
         </div>
-      </div>
 
-      <!-- スマホ用：取引一覧のみ -->
-      <div class="tx-sp-layout">
-        <div class="sh">
-          <div class="st">取引一覧</div>
-          <div style="display:flex;gap:6px">
-            <select id="f-acct-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
-              <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
-            </select>
-            <select id="f-type-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
-              <option value="">収支</option><option value="income">収入</option>
-              <option value="expense">支出</option><option value="transfer">振替</option>
-            </select>
-          </div>
-        </div>
-        <div id="tx-list-sp"></div>
-      </div>
-    </div>
+        <!-- ===== Transactions ===== -->
+        <div class="page" id="page-transactions">
 
-    <!-- ボトムシート（スマホ用） -->
-    <div class="bs-overlay" id="bs-overlay" onclick="closeBottomSheet()"></div>
-    <div class="bs-sheet" id="bs-sheet">
-      <div class="bs-handle-wrap"><div class="bs-handle"></div></div>
-      <div class="bs-inner">
-        <div class="bs-header">
-          <div class="bs-title">取引を追加</div>
-          <button class="bs-close" onclick="closeBottomSheet()">✕</button>
-        </div>
-        <div class="bs-tog3">
-          <button class="bs-tbtn income on" onclick="setBsType('income',this)">収入</button>
-          <button class="bs-tbtn expense"   onclick="setBsType('expense',this)">支出</button>
-          <button class="bs-tbtn transfer"  onclick="setBsType('transfer',this)">振替</button>
-        </div>
-        <div id="bs-normal">
-          <div class="bs-tog2">
-            <button class="bs-abtn cash on" onclick="setBsAcct('cash',this)">現金</button>
-            <button class="bs-abtn bank"    onclick="setBsAcct('bank',this)">銀行預金</button>
-          </div>
-          <div class="bs-amt-wrap">
-            <div class="bs-amt-label">金額（円）</div>
-            <input type="number" id="bs-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
-          </div>
-          <div class="bs-field">
-            <label class="bs-label">摘要</label>
-            <input type="text" id="bs-desc" class="bs-input" placeholder="例：5月分部費、備品購入">
-          </div>
-          <div class="bs-row2">
-            <div class="bs-field">
-              <label class="bs-label">日付</label>
-              <input type="date" id="bs-date" class="bs-input">
+          <!-- PC用レイアウト -->
+          <div class="tx-pc-layout">
+            <div class="card">
+              <div class="ctitle">取引を追加</div>
+              <div style="margin-bottom:4px"><label>種別</label></div>
+              <div class="tog3">
+                <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
+                <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
+                <button class="tbtn transfer"  id="t-transfer" onclick="setType('transfer')">口座振替</button>
+              </div>
+              <div id="normal-fields">
+                <div style="margin-bottom:4px"><label>口座</label></div>
+                <div class="tog2">
+                  <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
+                  <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
+                </div>
+                <div class="fg">
+                  <div class="fi"><label>日付</label><input type="date" id="tx-date"></div>
+                  <div class="fi"><label>金額（円）</label><input type="number" id="tx-amt" placeholder="0" min="0" inputmode="numeric"></div>
+                  <div class="fi full"><label>摘要</label><input type="text" id="tx-desc" placeholder="例：5月分部費、備品購入"></div>
+                  <div class="fi full">
+                    <label>科目</label>
+                    <select id="tx-cat">
+                      <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
+                      <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
+                    </select>
+                  </div>
+                  <div class="fi full"><label>備考</label><textarea id="tx-note" placeholder="任意"></textarea></div>
+                </div>
+              </div>
+              <div id="transfer-fields" style="display:none">
+                <div class="fg">
+                  <div class="fi"><label>日付</label><input type="date" id="tr-date"></div>
+                  <div class="fi"><label>金額（円）</label><input type="number" id="tr-amt" placeholder="0" min="0" inputmode="numeric"></div>
+                  <div class="fi"><label>移動元</label>
+                    <select id="tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
+                  </div>
+                  <div class="fi"><label>移動先</label>
+                    <select id="tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
+                  </div>
+                  <div class="fi full"><label>摘要</label><input type="text" id="tr-desc" placeholder="例：銀行から現金引き出し"></div>
+                  <div class="fi full"><label>備考</label><textarea id="tr-note" placeholder="任意"></textarea></div>
+                </div>
+              </div>
+              <button class="btn bp" style="width:100%;margin-top:12px" onclick="addTx()">追加する</button>
             </div>
-            <div class="bs-field">
-              <label class="bs-label">科目</label>
-              <select id="bs-cat" class="bs-input">
+            <div>
+              <div class="sh">
+                <div class="st">取引一覧</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <select id="f-acct" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                    <option value="">すべての口座</option><option value="cash">現金</option><option value="bank">銀行</option>
+                  </select>
+                  <select id="f-type" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                    <option value="">すべて</option><option value="income">収入</option>
+                    <option value="expense">支出</option><option value="transfer">口座振替</option>
+                  </select>
+                </div>
+              </div>
+              <div class="thr tx6">
+                <span>日付</span><span></span><span>摘要</span>
+                <span class="tx-cat-col">科目</span>
+                <span style="text-align:right">金額</span>
+                <span class="tx-del-col"></span>
+              </div>
+              <div id="tx-list"></div>
+            </div>
+          </div>
+
+          <!-- スマホ用：取引一覧のみ -->
+          <div class="tx-sp-layout">
+            <div class="sh">
+              <div class="st">取引一覧</div>
+              <div style="display:flex;gap:6px">
+                <select id="f-acct-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                  <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
+                </select>
+                <select id="f-type-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                  <option value="">収支</option><option value="income">収入</option>
+                  <option value="expense">支出</option><option value="transfer">振替</option>
+                </select>
+              </div>
+            </div>
+            <div id="tx-list-sp"></div>
+          </div>
+        </div>
+
+        <!-- ボトムシート（スマホ用） -->
+        <div class="bs-overlay" id="bs-overlay" onclick="closeBottomSheet()"></div>
+        <div class="bs-sheet" id="bs-sheet">
+          <div class="bs-handle-wrap"><div class="bs-handle"></div></div>
+          <div class="bs-inner">
+            <div class="bs-header">
+              <div class="bs-title">取引を追加</div>
+              <button class="bs-close" onclick="closeBottomSheet()">✕</button>
+            </div>
+            <div class="bs-tog3">
+              <button class="bs-tbtn income on" onclick="setBsType('income',this)">収入</button>
+              <button class="bs-tbtn expense"   onclick="setBsType('expense',this)">支出</button>
+              <button class="bs-tbtn transfer"  onclick="setBsType('transfer',this)">振替</button>
+            </div>
+            <div id="bs-normal">
+              <div class="bs-tog2">
+                <button class="bs-abtn cash on" onclick="setBsAcct('cash',this)">現金</button>
+                <button class="bs-abtn bank"    onclick="setBsAcct('bank',this)">銀行預金</button>
+              </div>
+              <div class="bs-amt-wrap">
+                <div class="bs-amt-label">金額（円）</div>
+                <input type="number" id="bs-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
+              </div>
+              <div class="bs-field">
+                <label class="bs-label">摘要</label>
+                <input type="text" id="bs-desc" class="bs-input" placeholder="例：5月分部費、備品購入">
+              </div>
+              <div class="bs-row2">
+                <div class="bs-field">
+                  <label class="bs-label">日付</label>
+                  <input type="date" id="bs-date" class="bs-input">
+                </div>
+                <div class="bs-field">
+                  <label class="bs-label">科目</label>
+                  <select id="bs-cat" class="bs-input">
+                    <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
+                    <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bs-field">
+                <label class="bs-label">備考（任意）</label>
+                <input type="text" id="bs-note" class="bs-input" placeholder="任意">
+              </div>
+            </div>
+            <div id="bs-transfer" style="display:none">
+              <div class="bs-amt-wrap">
+                <div class="bs-amt-label">金額（円）</div>
+                <input type="number" id="bs-tr-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
+              </div>
+              <div class="bs-row2">
+                <div class="bs-field">
+                  <label class="bs-label">移動元</label>
+                  <select id="bs-tr-from" class="bs-input">
+                    <option value="cash">現金</option><option value="bank">銀行預金</option>
+                  </select>
+                </div>
+                <div class="bs-field">
+                  <label class="bs-label">移動先</label>
+                  <select id="bs-tr-to" class="bs-input">
+                    <option value="bank">銀行預金</option><option value="cash">現金</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bs-row2">
+                <div class="bs-field">
+                  <label class="bs-label">日付</label>
+                  <input type="date" id="bs-tr-date" class="bs-input">
+                </div>
+                <div class="bs-field">
+                  <label class="bs-label">摘要</label>
+                  <input type="text" id="bs-tr-desc" class="bs-input" placeholder="例：現金引き出し">
+                </div>
+              </div>
+            </div>
+            <button class="bs-submit" onclick="addTxFromSheet()">追加する</button>
+          </div>
+        </div>
+
+        <!-- FAB -->
+        <button class="fab" id="fab" onclick="openBottomSheet()">＋</button>
+
+        <!-- ===== Ledger ===== -->
+        <div class="page" id="page-ledger">
+          <div class="tab-pills" id="ledger-tabs">
+            <button class="pill active" onclick="showLedger('cash')">現金出納帳</button>
+            <button class="pill" onclick="showLedger('bank')">預金出納帳</button>
+            <button class="pill" onclick="showLedger('cat')">科目別台帳</button>
+            <button class="pill" onclick="showLedger('summary')">収支計算書</button>
+          </div>
+          <div id="ledger-content"></div>
+        </div>
+
+        <!-- ===== Members ===== -->
+        <div class="page" id="page-members">
+          <div class="sh">
+            <div class="st">部員名簿</div>
+            <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+            <select id="f-attr" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
+              <option value="">すべての属性</option><option value="male">男プレ</option>
+              <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
+            </select>
+            <select id="f-grade" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
+              <option value="">すべての学年</option>
+              <option value="26">26</option><option value="25">25</option><option value="24">24</option>
+              <option value="23">23</option><option value="22">22</option><option value="21">21</option>
+            </select>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="mtbl">
+              <thead><tr><th>氏名</th><th>学年</th><th>属性</th><th></th></tr></thead>
+              <tbody id="m-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== Fees ===== -->
+        <div class="page" id="page-fees">
+          <div class="sh">
+            <div class="st">属性別部費設定</div>
+            <button class="btn bs sm" onclick="openFeeModal()">⚙ 設定を編集</button>
+          </div>
+          <div class="fee-setting-row" id="fee-setting-view"></div>
+
+          <hr class="dv">
+
+          <div class="sh">
+            <div class="st">月別回収管理</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-size:12px;color:var(--tx2)">対象月</label>
+              <input type="month" id="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px">
+            </div>
+          </div>
+
+          <div class="fsrow">
+            <div class="fstat"><div class="fn" id="fp-c" style="color:var(--grn)">0</div><div class="fl">納入済み</div></div>
+            <div class="fstat"><div class="fn" id="fu-c" style="color:var(--red)">0</div><div class="fl">未納</div></div>
+            <div class="fstat"><div class="fn" id="fc-a" style="color:var(--grn)">¥0</div><div class="fl">回収済み</div></div>
+            <div class="fstat"><div class="fn" id="fr-a" style="color:var(--tx2)">¥0</div><div class="fl">未回収</div></div>
+          </div>
+
+          <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
+            <table class="mtbl">
+              <thead>
+                <tr>
+                  <th>氏名</th><th>属性</th><th>参加回数</th>
+                  <th style="text-align:right">今月の部費</th>
+                  <th style="text-align:center">納入状況</th>
+                </tr>
+              </thead>
+              <tbody id="fee-tbody"></tbody>
+            </table>
+          </div>
+
+          <hr class="dv">
+          <div class="sh"><div class="st">幹部上 未納一覧</div></div>
+          <div id="exec-unpaid-wrap"></div>
+        </div>
+
+        <!-- ===== Report ===== -->
+        <div class="page" id="page-report">
+          <div class="st" style="margin-bottom:16px">収支レポート</div>
+
+          <div class="report-grid">
+            <div class="card"><div class="ctitle">月別集計</div><div id="r-monthly"></div></div>
+            <div class="card"><div class="ctitle">科目別集計（全期間）</div><div id="r-cats"></div></div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="ctitle">収支推移グラフ</div>
+            <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+          </div>
+
+          <div class="card" style="margin-bottom:14px">
+            <div class="ctitle">月別収支推移（テーブル）</div>
+            <div style="overflow-x:auto"><table class="ltbl" id="trend-table"></table></div>
+          </div>
+
+          <div class="card">
+            <div class="ctitle">データ出力</div>
+            <p style="font-size:13px;color:var(--tx2);margin-bottom:10px">取引データをCSVで書き出せます。</p>
+            <button class="btn bp" onclick="exportCSV()">CSVをダウンロード</button>
+          </div>
+        </div>
+
+      </main>
+    </div><!-- /#main-app -->
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <!-- ===== MODALS ===== -->
+
+    <!-- 取引編集 -->
+    <div class="mbg" id="m-edit-tx">
+      <div class="modal">
+        <div class="modal-title">取引を編集</div>
+        <input type="hidden" id="etx-id">
+
+        <!-- 通常取引フィールド -->
+        <div id="etx-normal">
+          <div style="margin-bottom:6px"><label>種別</label></div>
+          <div class="tog2" style="margin-bottom:12px">
+            <button class="tbtn income" id="etx-t-income"  onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
+            <button class="tbtn expense" id="etx-t-expense" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
+          </div>
+          <div style="margin-bottom:6px"><label>口座</label></div>
+          <div class="tog2" style="margin-bottom:12px">
+            <button class="tbtn cash" id="etx-a-cash" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
+            <button class="tbtn bank" id="etx-a-bank" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
+          </div>
+          <div class="fg">
+            <div class="fi"><label>日付</label><input type="date" id="etx-date"></div>
+            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt" min="0" inputmode="numeric"></div>
+            <div class="fi full"><label>摘要</label><input type="text" id="etx-desc"></div>
+            <div class="fi full">
+              <label>科目</label>
+              <select id="etx-cat">
                 <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
                 <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
               </select>
             </div>
-          </div>
-          <div class="bs-field">
-            <label class="bs-label">備考（任意）</label>
-            <input type="text" id="bs-note" class="bs-input" placeholder="任意">
+            <div class="fi full"><label>備考</label><input type="text" id="etx-note" placeholder="任意"></div>
           </div>
         </div>
-        <div id="bs-transfer" style="display:none">
-          <div class="bs-amt-wrap">
-            <div class="bs-amt-label">金額（円）</div>
-            <input type="number" id="bs-tr-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
+
+        <!-- 振替フィールド -->
+        <div id="etx-transfer" style="display:none">
+          <div class="fg">
+            <div class="fi"><label>日付</label><input type="date" id="etx-date-tr" oninput="document.getElementById('etx-date').value=this.value"></div>
+            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt-tr" min="0" inputmode="numeric" oninput="document.getElementById('etx-amt').value=this.value"></div>
+            <div class="fi">
+              <label>移動元</label>
+              <select id="etx-tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
+            </div>
+            <div class="fi">
+              <label>移動先</label>
+              <select id="etx-tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
+            </div>
+            <div class="fi full"><label>摘要</label><input type="text" id="etx-tr-desc"></div>
           </div>
-          <div class="bs-row2">
-            <div class="bs-field">
-              <label class="bs-label">移動元</label>
-              <select id="bs-tr-from" class="bs-input">
-                <option value="cash">現金</option><option value="bank">銀行預金</option>
+        </div>
+
+        <div class="mact">
+          <button class="btn bd sm" onclick="delTx(parseInt(document.getElementById('etx-id').value));closeM('m-edit-tx')" style="margin-right:auto">削除</button>
+          <button class="btn bs" onclick="closeM('m-edit-tx')">キャンセル</button>
+          <button class="btn bp" onclick="saveEditTx()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 部員追加 -->
+    <div class="mbg" id="m-add">
+      <div class="modal">
+        <div class="modal-title">部員を追加</div>
+        <div class="fg">
+          <div class="fi full"><label>氏名</label><input type="text" id="ma-name" placeholder="例：山田 太郎"></div>
+          <div class="fi">
+            <label>学年</label>
+            <select id="ma-grade">
+              <option value="26">26</option><option value="25">25</option><option value="24">24</option>
+              <option value="23">23</option><option value="22">22</option><option value="21">21</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>属性</label>
+            <select id="ma-attr">
+              <option value="male">男プレ</option><option value="female">女プレ</option>
+              <option value="manager">マネージャー</option><option value="exec">幹部上</option>
+            </select>
+          </div>
+        </div>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-add')">キャンセル</button>
+          <button class="btn bp" onclick="addMember()">追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 部員編集 -->
+    <div class="mbg" id="m-edit">
+      <div class="modal">
+        <div class="modal-title">部員を編集</div>
+        <input type="hidden" id="me-id">
+        <div class="fg">
+          <div class="fi full"><label>氏名</label><input type="text" id="me-name"></div>
+          <div class="fi">
+            <label>学年</label>
+            <select id="me-grade">
+              <option value="26">26</option><option value="25">25</option><option value="24">24</option>
+              <option value="23">23</option><option value="22">22</option><option value="21">21</option>
+            </select>
+          </div>
+          <div class="fi">
+            <label>属性</label>
+            <select id="me-attr">
+              <option value="male">男プレ</option><option value="female">女プレ</option>
+              <option value="manager">マネージャー</option><option value="exec">幹部上</option>
+            </select>
+          </div>
+        </div>
+        <div class="mact">
+          <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">削除</button>
+          <button class="btn bs" onclick="closeM('m-edit')">キャンセル</button>
+          <button class="btn bp" onclick="saveMember()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 部費設定 -->
+    <div class="mbg" id="m-fee">
+      <div class="modal">
+        <div class="modal-title">部費設定</div>
+        <div class="ctitle" style="margin-bottom:8px">属性別の基本月額</div>
+        <div class="fg" style="margin-bottom:16px">
+          <div class="fi"><label><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" min="0" inputmode="numeric"></div>
+          <div class="fi"><label><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" min="0" inputmode="numeric"></div>
+          <div class="fi"><label><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" min="0" inputmode="numeric"></div>
+          <div class="fi"><label><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" min="0" inputmode="numeric"></div>
+        </div>
+        <hr class="dv">
+        <div class="ctitle" style="margin-bottom:8px">一時的な金額調整（期間指定）</div>
+        <div id="adj-list" style="margin-bottom:10px"></div>
+        <div style="background:var(--sur2);border-radius:8px;padding:12px">
+          <div class="fg" style="margin-bottom:8px">
+            <div class="fi">
+              <label>属性</label>
+              <select id="adj-attr">
+                <option value="male">男プレ</option><option value="female">女プレ</option>
+                <option value="manager">マネージャー</option><option value="exec">幹部上</option>
               </select>
             </div>
-            <div class="bs-field">
-              <label class="bs-label">移動先</label>
-              <select id="bs-tr-to" class="bs-input">
-                <option value="bank">銀行預金</option><option value="cash">現金</option>
-              </select>
-            </div>
+            <div class="fi"><label>金額（円）</label><input type="number" id="adj-amt" min="0" placeholder="0" inputmode="numeric"></div>
           </div>
-          <div class="bs-row2">
-            <div class="bs-field">
-              <label class="bs-label">日付</label>
-              <input type="date" id="bs-tr-date" class="bs-input">
-            </div>
-            <div class="bs-field">
-              <label class="bs-label">摘要</label>
-              <input type="text" id="bs-tr-desc" class="bs-input" placeholder="例：現金引き出し">
-            </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+            <div class="fi"><label>開始月</label><input type="month" id="adj-from"></div>
+            <div class="fi"><label>終了月</label><input type="month" id="adj-to"></div>
+            <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
           </div>
         </div>
-        <button class="bs-submit" onclick="addTxFromSheet()">追加する</button>
-      </div>
-    </div>
-
-    <!-- FAB -->
-    <button class="fab" id="fab" onclick="openBottomSheet()">＋</button>
-
-    <!-- ===== Ledger ===== -->
-    <div class="page" id="page-ledger">
-      <div class="tab-pills" id="ledger-tabs">
-        <button class="pill active" onclick="showLedger('cash')">現金出納帳</button>
-        <button class="pill" onclick="showLedger('bank')">預金出納帳</button>
-        <button class="pill" onclick="showLedger('cat')">科目別台帳</button>
-        <button class="pill" onclick="showLedger('summary')">収支計算書</button>
-      </div>
-      <div id="ledger-content"></div>
-    </div>
-
-    <!-- ===== Members ===== -->
-    <div class="page" id="page-members">
-      <div class="sh">
-        <div class="st">部員名簿</div>
-        <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-        <select id="f-attr" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
-          <option value="">すべての属性</option><option value="male">男プレ</option>
-          <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
-        </select>
-        <select id="f-grade" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
-          <option value="">すべての学年</option>
-          <option value="26">26</option><option value="25">25</option><option value="24">24</option>
-          <option value="23">23</option><option value="22">22</option><option value="21">21</option>
-        </select>
-      </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <table class="mtbl">
-          <thead><tr><th>氏名</th><th>学年</th><th>属性</th><th></th></tr></thead>
-          <tbody id="m-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ===== Fees ===== -->
-    <div class="page" id="page-fees">
-      <div class="sh">
-        <div class="st">属性別部費設定</div>
-        <button class="btn bs sm" onclick="openFeeModal()">⚙ 設定を編集</button>
-      </div>
-      <div class="fee-setting-row" id="fee-setting-view"></div>
-
-      <hr class="dv">
-
-      <div class="sh">
-        <div class="st">月別回収管理</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:12px;color:var(--tx2)">対象月</label>
-          <input type="month" id="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px">
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-fee')">キャンセル</button>
+          <button class="btn bp" onclick="saveFee()">保存</button>
         </div>
       </div>
-
-      <div class="fsrow">
-        <div class="fstat"><div class="fn" id="fp-c" style="color:var(--grn)">0</div><div class="fl">納入済み</div></div>
-        <div class="fstat"><div class="fn" id="fu-c" style="color:var(--red)">0</div><div class="fl">未納</div></div>
-        <div class="fstat"><div class="fn" id="fc-a" style="color:var(--grn)">¥0</div><div class="fl">回収済み</div></div>
-        <div class="fstat"><div class="fn" id="fr-a" style="color:var(--tx2)">¥0</div><div class="fl">未回収</div></div>
-      </div>
-
-      <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
-        <table class="mtbl">
-          <thead>
-            <tr>
-              <th>氏名</th><th>属性</th><th>参加回数</th>
-              <th style="text-align:right">今月の部費</th>
-              <th style="text-align:center">納入状況</th>
-            </tr>
-          </thead>
-          <tbody id="fee-tbody"></tbody>
-        </table>
-      </div>
-
-      <hr class="dv">
-      <div class="sh"><div class="st">幹部上 未納一覧</div></div>
-      <div id="exec-unpaid-wrap"></div>
     </div>
 
-    <!-- ===== Report ===== -->
-    <div class="page" id="page-report">
-      <div class="st" style="margin-bottom:16px">収支レポート</div>
-
-      <div class="report-grid">
-        <div class="card"><div class="ctitle">月別集計</div><div id="r-monthly"></div></div>
-        <div class="card"><div class="ctitle">科目別集計（全期間）</div><div id="r-cats"></div></div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px">
-        <div class="ctitle">収支推移グラフ</div>
-        <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
-      </div>
-
-      <div class="card" style="margin-bottom:14px">
-        <div class="ctitle">月別収支推移（テーブル）</div>
-        <div style="overflow-x:auto"><table class="ltbl" id="trend-table"></table></div>
-      </div>
-
-      <div class="card">
-        <div class="ctitle">データ出力</div>
-        <p style="font-size:13px;color:var(--tx2);margin-bottom:10px">取引データをCSVで書き出せます。</p>
-        <button class="btn bp" onclick="exportCSV()">CSVをダウンロード</button>
-      </div>
-    </div>
-
-  </main>
-</div><!-- /#main-app -->
-
-<!-- Toast -->
-<div id="toast"></div>
-
-<!-- ===== MODALS ===== -->
-
-<!-- 部員追加 -->
-<div class="mbg" id="m-add">
-  <div class="modal">
-    <div class="modal-title">部員を追加</div>
-    <div class="fg">
-      <div class="fi full"><label>氏名</label><input type="text" id="ma-name" placeholder="例：山田 太郎"></div>
-      <div class="fi">
-        <label>学年</label>
-        <select id="ma-grade">
-          <option value="26">26</option><option value="25">25</option><option value="24">24</option>
-          <option value="23">23</option><option value="22">22</option><option value="21">21</option>
-        </select>
-      </div>
-      <div class="fi">
-        <label>属性</label>
-        <select id="ma-attr">
-          <option value="male">男プレ</option><option value="female">女プレ</option>
-          <option value="manager">マネージャー</option><option value="exec">幹部上</option>
-        </select>
-      </div>
-    </div>
-    <div class="mact">
-      <button class="btn bs" onclick="closeM('m-add')">キャンセル</button>
-      <button class="btn bp" onclick="addMember()">追加</button>
-    </div>
-  </div>
-</div>
-
-<!-- 部員編集 -->
-<div class="mbg" id="m-edit">
-  <div class="modal">
-    <div class="modal-title">部員を編集</div>
-    <input type="hidden" id="me-id">
-    <div class="fg">
-      <div class="fi full"><label>氏名</label><input type="text" id="me-name"></div>
-      <div class="fi">
-        <label>学年</label>
-        <select id="me-grade">
-          <option value="26">26</option><option value="25">25</option><option value="24">24</option>
-          <option value="23">23</option><option value="22">22</option><option value="21">21</option>
-        </select>
-      </div>
-      <div class="fi">
-        <label>属性</label>
-        <select id="me-attr">
-          <option value="male">男プレ</option><option value="female">女プレ</option>
-          <option value="manager">マネージャー</option><option value="exec">幹部上</option>
-        </select>
-      </div>
-    </div>
-    <div class="mact">
-      <button class="btn bd sm" onclick="deleteMember()" style="margin-right:auto">削除</button>
-      <button class="btn bs" onclick="closeM('m-edit')">キャンセル</button>
-      <button class="btn bp" onclick="saveMember()">保存</button>
-    </div>
-  </div>
-</div>
-
-<!-- 部費設定 -->
-<div class="mbg" id="m-fee">
-  <div class="modal">
-    <div class="modal-title">部費設定</div>
-    <div class="ctitle" style="margin-bottom:8px">属性別の基本月額</div>
-    <div class="fg" style="margin-bottom:16px">
-      <div class="fi"><label><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" min="0" inputmode="numeric"></div>
-      <div class="fi"><label><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" min="0" inputmode="numeric"></div>
-      <div class="fi"><label><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" min="0" inputmode="numeric"></div>
-      <div class="fi"><label><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" min="0" inputmode="numeric"></div>
-    </div>
-    <hr class="dv">
-    <div class="ctitle" style="margin-bottom:8px">一時的な金額調整（期間指定）</div>
-    <div id="adj-list" style="margin-bottom:10px"></div>
-    <div style="background:var(--sur2);border-radius:8px;padding:12px">
-      <div class="fg" style="margin-bottom:8px">
-        <div class="fi">
-          <label>属性</label>
-          <select id="adj-attr">
-            <option value="male">男プレ</option><option value="female">女プレ</option>
-            <option value="manager">マネージャー</option><option value="exec">幹部上</option>
-          </select>
-        </div>
-        <div class="fi"><label>金額（円）</label><input type="number" id="adj-amt" min="0" placeholder="0" inputmode="numeric"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-        <div class="fi"><label>開始月</label><input type="month" id="adj-from"></div>
-        <div class="fi"><label>終了月</label><input type="month" id="adj-to"></div>
-        <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
-      </div>
-    </div>
-    <div class="mact">
-      <button class="btn bs" onclick="closeM('m-fee')">キャンセル</button>
-      <button class="btn bp" onclick="saveFee()">保存</button>
-    </div>
-  </div>
-</div>
-
-<script src="static/script.js"></script>
-</body>
+    <script src="static/script.js"></script>
+  </body>
 </html>

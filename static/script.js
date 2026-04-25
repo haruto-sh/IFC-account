@@ -54,12 +54,36 @@ window.addEventListener('load', () => {
 });
 
 function initGIS() {
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    callback: handleCredential,
-    auto_select: true,
-  });
+  // URLハッシュにアクセストークンが含まれているか確認（リダイレクト後）
+  const hashToken = parseTokenFromHash();
+  if (hashToken) {
+    accessToken = hashToken.token;
+    // リダイレクト前に保存したメールアドレスを復元
+    userEmail   = sessionStorage.getItem('pending_email') || '';
+    sessionStorage.removeItem('pending_email');
+    sessionStorage.setItem('gapi_token', JSON.stringify({
+      token:  accessToken,
+      email:  userEmail,
+      expiry: Date.now() + (hashToken.expiresIn - 60) * 1000,
+    }));
+    // ハッシュをURLから除去（履歴に残さない）
+    history.replaceState(null, '', location.pathname);
+    startApp();
+    return;
+  }
+
+  // sessionStorageに有効なトークンがあれば再利用
   tryRestoreToken();
+}
+
+function parseTokenFromHash() {
+  const hash = location.hash.substring(1);
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const token  = params.get('access_token');
+  const expires = parseInt(params.get('expires_in') || '3600');
+  if (!token) return null;
+  return { token, expiresIn: expires, email: '' };
 }
 
 function tryRestoreToken() {
@@ -83,35 +107,37 @@ function tryRestoreToken() {
 function showLoginScreen() {
   setLoading(false);
   document.getElementById('login-screen').style.display = 'flex';
+  // Google One Tap ボタンをレンダリング（IDトークン取得用）
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleOneTap,
+    auto_select: false,
+  });
   google.accounts.id.renderButton(
     document.getElementById('google-signin-btn'),
     { theme:'outline', size:'large', text:'signin_with', locale:'ja', shape:'pill' }
   );
 }
 
-async function handleCredential(response) {
+// One Tap でIDトークンを受け取った後、リダイレクトフローでアクセストークンを取得
+function handleOneTap(response) {
   const payload = JSON.parse(atob(response.credential.split('.')[1]));
   userEmail = payload.email;
+  sessionStorage.setItem('pending_email', userEmail);
+  // リダイレクト方式でアクセストークンを要求（postMessageを使わないのでCOOP非該当）
+  requestTokenViaRedirect();
+}
 
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    // ux_mode: popup だと COOP でブロックされるため select_account を指定して回避
-    callback: async (tokenResp) => {
-      if (tokenResp.error) { showLoginError(); return; }
-      accessToken = tokenResp.access_token;
-      sessionStorage.setItem('gapi_token', JSON.stringify({
-        token:  accessToken,
-        email:  userEmail,
-        expiry: Date.now() + (tokenResp.expires_in - 60) * 1000,
-      }));
-      document.getElementById('login-screen').style.display = 'none';
-      startApp();
-    },
+function requestTokenViaRedirect() {
+  const redirectUri = location.origin + location.pathname;
+  const params = new URLSearchParams({
+    client_id:     CLIENT_ID,
+    redirect_uri:  redirectUri,
+    response_type: 'token',
+    scope:         SCOPES,
+    include_granted_scopes: 'true',
   });
-  // prompt: 'none' だと COOP エラーになるため '' を 'consent' に変更
-  // 初回は必ずポップアップを出すことで postMessage ブロックを回避
-  client.requestAccessToken({ prompt: 'consent' });
+  location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
 function showLoginError() {
@@ -119,10 +145,10 @@ function showLoginError() {
 }
 
 function signOut() {
-  google.accounts.id.disableAutoSelect();
   sessionStorage.removeItem('gapi_token');
+  sessionStorage.removeItem('pending_email');
   accessToken = null;
-  location.reload();
+  location.href = location.origin + location.pathname;
 }
 
 /* ================================================================
@@ -451,25 +477,37 @@ function renderDash() {
    TX ROW / RENDER
 ================================================================ */
 function txRow(t) {
-  let ab, amtStr, amtCls;
-  if (t.type==='transfer') {
-    ab = `<span class="bdg transfer">振替</span>`;
-    amtStr = fmt(t.amount); amtCls = 'transfer';
+  if (!t || !t.date) return '';
+  let acctBadge, amtStr, amtCls, catLabel;
+  if (t.type === 'transfer') {
+    acctBadge = `<span class="bdg transfer">振替</span>`;
+    amtStr    = fmt(t.amount);
+    amtCls    = 'transfer';
+    catLabel  = `${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}`;
   } else {
-    ab = `<span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span>`;
-    amtStr = (t.type==='income'?'+':'-') + fmt(t.amount); amtCls = t.type;
+    acctBadge = `<span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span>`;
+    amtStr    = (t.type==='income'?'+':'-') + fmt(t.amount);
+    amtCls    = t.type;
+    catLabel  = t.cat;
   }
-  const catLabel = t.type==='transfer'
-    ? `${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}` : t.cat;
-  return `<div class="txr tx6">
-    <span class="txdate">${t.date.slice(5)}</span>
-    ${ab}
-    <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</span>
-    <span class="txcat tx-cat-col">${catLabel}</span>
-    <span class="txamt ${amtCls}">${amtStr}</span>
-    <span class="tx-del-col" style="display:flex;justify-content:flex-end">
-      <button class="btn bd sm" onclick="delTx(${t.id})">削除</button>
-    </span>
+  // 日付を m/d 形式に変換
+  const dateParts = t.date.slice(5).split('-');
+  const dateLabel = dateParts.length === 2
+    ? `${parseInt(dateParts[0])}/${parseInt(dateParts[1])}`
+    : t.date.slice(5);
+
+  return `<div class="txr">
+    <div class="txr-row1">
+      <span class="txdate">${dateLabel}</span>
+      ${acctBadge}
+      <span class="txcat">${catLabel}</span>
+    </div>
+    <div class="txr-row2">
+      <span class="txdesc">${t.desc}</span>
+      <span class="txamt ${amtCls}">${amtStr}</span>
+      <button class="btn bs sm" onclick="openEditTx(${t.id})" style="padding:4px 10px;font-size:11px;min-height:28px;flex-shrink:0">編集</button>
+      <button class="btn bd sm" onclick="delTx(${t.id})"     style="padding:4px 10px;font-size:11px;min-height:28px;flex-shrink:0">削除</button>
+    </div>
   </div>`;
 }
 
@@ -532,6 +570,72 @@ async function addTx() {
     ['tx-amt','tx-desc','tx-note'].forEach(id => document.getElementById(id).value='');
   }
   toast('追加しました ✓');
+  render();
+  await saveTx();
+}
+
+function openEditTx(id) {
+  const t = S.txs.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById('etx-id').value    = id;
+  document.getElementById('etx-date').value  = t.date;
+  document.getElementById('etx-amt').value   = t.amount;
+  document.getElementById('etx-desc').value  = t.desc;
+  document.getElementById('etx-note').value  = t.note || '';
+
+  const isTransfer = t.type === 'transfer';
+  document.getElementById('etx-normal').style.display   = isTransfer ? 'none' : 'block';
+  document.getElementById('etx-transfer').style.display = isTransfer ? 'block' : 'none';
+
+  if (isTransfer) {
+    document.getElementById('etx-date').value    = t.date;
+    document.getElementById('etx-amt').value     = t.amount;
+    document.getElementById('etx-tr-from').value = t.acct;
+    document.getElementById('etx-tr-to').value   = t.toAcct;
+    document.getElementById('etx-tr-desc').value = t.desc;
+  } else {
+    // 種別ボタン
+    ['income','expense'].forEach(tp => {
+      document.getElementById('etx-t-' + tp).classList.toggle('on', t.type === tp);
+    });
+    // 口座ボタン
+    ['cash','bank'].forEach(ac => {
+      document.getElementById('etx-a-' + ac).classList.toggle('on', t.acct === ac);
+    });
+    document.getElementById('etx-cat').value = t.cat;
+  }
+  openM('m-edit-tx');
+}
+
+async function saveEditTx() {
+  const id = parseInt(document.getElementById('etx-id').value);
+  const t  = S.txs.find(t => t.id === id);
+  if (!t) return;
+
+  const isTransfer = t.type === 'transfer';
+  if (isTransfer) {
+    t.date   = document.getElementById('etx-date').value;
+    t.amount = parseInt(document.getElementById('etx-amt').value) || 0;
+    t.acct   = document.getElementById('etx-tr-from').value;
+    t.toAcct = document.getElementById('etx-tr-to').value;
+    t.desc   = document.getElementById('etx-tr-desc').value.trim() ||
+               `${t.acct==='cash'?'現金':'銀行'}→${t.toAcct==='cash'?'現金':'銀行'}`;
+    if (t.acct === t.toAcct) { toast('移動元と移動先が同じです'); return; }
+  } else {
+    const typeOn = ['income','expense'].find(tp =>
+      document.getElementById('etx-t-' + tp).classList.contains('on'));
+    const acctOn = ['cash','bank'].find(ac =>
+      document.getElementById('etx-a-' + ac).classList.contains('on'));
+    t.type   = typeOn || t.type;
+    t.acct   = acctOn || t.acct;
+    t.date   = document.getElementById('etx-date').value;
+    t.amount = parseInt(document.getElementById('etx-amt').value) || 0;
+    t.desc   = document.getElementById('etx-desc').value.trim();
+    t.cat    = document.getElementById('etx-cat').value;
+    t.note   = document.getElementById('etx-note').value.trim();
+  }
+  closeM('m-edit-tx');
+  toast('更新しました ✓');
   render();
   await saveTx();
 }
