@@ -65,12 +65,16 @@ function initGIS() {
 function tryRestoreToken() {
   const saved = sessionStorage.getItem('gapi_token');
   if (saved) {
-    const obj = JSON.parse(saved);
-    if (obj.expiry > Date.now()) {
-      accessToken = obj.token;
-      userEmail   = obj.email;
-      startApp();
-      return;
+    try {
+      const obj = JSON.parse(saved);
+      if (obj.expiry > Date.now()) {
+        accessToken = obj.token;
+        userEmail   = obj.email;
+        startApp();
+        return;
+      }
+    } catch(e) {
+      sessionStorage.removeItem('gapi_token');
     }
   }
   showLoginScreen();
@@ -92,6 +96,7 @@ async function handleCredential(response) {
   const client = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
+    // ux_mode: popup だと COOP でブロックされるため select_account を指定して回避
     callback: async (tokenResp) => {
       if (tokenResp.error) { showLoginError(); return; }
       accessToken = tokenResp.access_token;
@@ -104,7 +109,9 @@ async function handleCredential(response) {
       startApp();
     },
   });
-  client.requestAccessToken({ prompt:'' });
+  // prompt: 'none' だと COOP エラーになるため '' を 'consent' に変更
+  // 初回は必ずポップアップを出すことで postMessage ブロックを回避
+  client.requestAccessToken({ prompt: 'consent' });
 }
 
 function showLoginError() {
