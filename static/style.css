@@ -546,7 +546,6 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   .hbals { gap: 8px; }
   .hbal .hv { font-size: 11px; }
   .hdiv { display: none; }
-  .hbal:nth-child(3) { display: none; } /* 銀行残高を非表示 */
 
   /* Top nav → 非表示、bottom navに切り替え */
   #top-nav { display: none; }
@@ -810,8 +809,16 @@ select.bs-input {
   box-shadow: 0 4px 16px rgba(45,106,79,.4);
   align-items: center;
   justify-content: center;
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
   -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+.fab.show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
 }
 .fab:active { transform: scale(.93); box-shadow: 0 2px 8px rgba(45,106,79,.3); }
 

@@ -780,29 +780,39 @@ function renderMembers() {
 }
 
 async function addMember() {
-  const name  = document.getElementById('ma-name').value.trim();
-  const grade = document.getElementById('ma-grade').value;
-  const attr  = document.getElementById('ma-attr').value;
-  if (!name) { toast('氏名を入力してください'); return; }
+  const firstName = document.getElementById('ma-first-name').value.trim();
+  const lastName  = document.getElementById('ma-last-name').value.trim();
+  const grade     = document.getElementById('ma-grade').value;
+  const attr      = document.getElementById('ma-attr').value;
+  if (!firstName) { toast('姓を入力してください'); return; }
+  if (!lastName)  { toast('名を入力してください'); return; }
+  const name = `${firstName} ${lastName}`;
   S.members.push({ id:nid++, name, grade, attr });
-  document.getElementById('ma-name').value = '';
+  document.getElementById('ma-first-name').value = '';
+  document.getElementById('ma-last-name').value = '';
   closeM('m-add'); toast('追加しました ✓');
   render(); await saveMembers();
 }
 
 function openEdit(id) {
   const m = S.members.find(m => m.id===id); if (!m) return;
-  document.getElementById('me-id').value    = id;
-  document.getElementById('me-name').value  = m.name;
+  document.getElementById('me-id').value = id;
+  const [firstName, lastName] = (m.name + ' ').split(' ');
+  document.getElementById('me-first-name').value = firstName;
+  document.getElementById('me-last-name').value = lastName.trim();
   document.getElementById('me-grade').value = m.grade;
-  document.getElementById('me-attr').value  = m.attr;
+  document.getElementById('me-attr').value = m.attr;
   openM('m-edit');
 }
 
 async function saveMember() {
   const id = parseInt(document.getElementById('me-id').value);
   const m  = S.members.find(m => m.id===id); if (!m) return;
-  m.name  = document.getElementById('me-name').value.trim();
+  const firstName = document.getElementById('me-first-name').value.trim();
+  const lastName  = document.getElementById('me-last-name').value.trim();
+  if (!firstName) { toast('姓を入力してください'); return; }
+  if (!lastName)  { toast('名を入力してください'); return; }
+  m.name  = `${firstName} ${lastName}`;
   m.grade = document.getElementById('me-grade').value;
   m.attr  = document.getElementById('me-attr').value;
   closeM('m-edit'); toast('更新しました ✓');
@@ -1133,11 +1143,20 @@ document.addEventListener('DOMContentLoaded', () => {
     m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); }));
 });
 
+let toastTimeout = null;
 function toast(msg) {
   const el = document.getElementById('toast');
+
+  // 前のタイムアウトをクリア
+  if (toastTimeout) clearTimeout(toastTimeout);
+
   el.textContent = msg;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2200);
+
+  toastTimeout = setTimeout(() => {
+    el.classList.remove('show');
+    el.textContent = '';
+  }, 2200);
 }
 
 /* ================================================================
@@ -1248,5 +1267,32 @@ function renderTx() {
   sheet.addEventListener('touchend', e => {
     const dy = e.changedTouches[0].clientY - startY;
     if (dy > 80) closeBottomSheet();
+  }, { passive: true });
+})();
+
+/* FAB スクロール表示制御 */
+(function initFabScroll() {
+  const fab = document.getElementById('fab');
+  if (!fab) return;
+
+  let lastScrollY = 0;
+  let fabVisible = false;
+
+  window.addEventListener('scroll', () => {
+    const currentScrollY = window.scrollY;
+    const isScrollingUp = currentScrollY < lastScrollY;
+
+    // 上にスクロール → 表示、下にスクロール → 非表示
+    const shouldShow = isScrollingUp || currentScrollY < 100; // 上部近くなら常に表示
+
+    if (shouldShow && !fabVisible) {
+      fab.classList.add('show');
+      fabVisible = true;
+    } else if (!shouldShow && fabVisible) {
+      fab.classList.remove('show');
+      fabVisible = false;
+    }
+
+    lastScrollY = currentScrollY;
   }, { passive: true });
 })();

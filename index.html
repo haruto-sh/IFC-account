@@ -114,12 +114,6 @@
             <div class="st">最近の取引</div>
             <button class="btn bs sm" onclick="showPage('transactions')">すべて見る</button>
           </div>
-          <div class="thr tx6">
-            <span>日付</span><span></span><span>摘要</span>
-            <span class="tx-cat-col">科目</span>
-            <span style="text-align:right">金額</span>
-            <span class="tx-del-col"></span>
-          </div>
           <div id="recent-list"></div>
         </div>
 
@@ -200,10 +194,10 @@
             <div class="sh">
               <div class="st">取引一覧</div>
               <div style="display:flex;gap:6px">
-                <select id="f-acct-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                <select id="f-acct-sp" onchange="renderTx()" style="flex:1;font-size:12px;padding:5px 8px">
                   <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
                 </select>
-                <select id="f-type-sp" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                <select id="f-type-sp" onchange="renderTx()" style="flex:1;font-size:12px;padding:5px 8px">
                   <option value="">収支</option><option value="income">収入</option>
                   <option value="expense">支出</option><option value="transfer">振替</option>
                 </select>
@@ -313,11 +307,11 @@
             <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="f-attr" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
+            <select id="f-attr" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px">
               <option value="">すべての属性</option><option value="male">男プレ</option>
               <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
             </select>
-            <select id="f-grade" onchange="renderMembers()" style="font-size:12px;padding:5px 10px">
+            <select id="f-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px">
               <option value="">すべての学年</option>
               <option value="26">26</option><option value="25">25</option><option value="24">24</option>
               <option value="23">23</option><option value="22">22</option><option value="21">21</option>
@@ -428,8 +422,6 @@
           </div>
           <div class="fg">
             <div class="fi"><label>日付</label><input type="date" id="etx-date"></div>
-            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt" min="0" inputmode="numeric"></div>
-            <div class="fi full"><label>摘要</label><input type="text" id="etx-desc"></div>
             <div class="fi full">
               <label>科目</label>
               <select id="etx-cat">
@@ -437,6 +429,8 @@
                 <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
               </select>
             </div>
+            <div class="fi full"><label>摘要</label><input type="text" id="etx-desc"></div>
+            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt" min="0" inputmode="numeric"></div>
             <div class="fi full"><label>備考</label><input type="text" id="etx-note" placeholder="任意"></div>
           </div>
         </div>
@@ -445,7 +439,6 @@
         <div id="etx-transfer" style="display:none">
           <div class="fg">
             <div class="fi"><label>日付</label><input type="date" id="etx-date-tr" oninput="document.getElementById('etx-date').value=this.value"></div>
-            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt-tr" min="0" inputmode="numeric" oninput="document.getElementById('etx-amt').value=this.value"></div>
             <div class="fi">
               <label>移動元</label>
               <select id="etx-tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
@@ -455,6 +448,7 @@
               <select id="etx-tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
             </div>
             <div class="fi full"><label>摘要</label><input type="text" id="etx-tr-desc"></div>
+            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt-tr" min="0" inputmode="numeric" oninput="document.getElementById('etx-amt').value=this.value"></div>
           </div>
         </div>
 
@@ -471,7 +465,8 @@
       <div class="modal">
         <div class="modal-title">部員を追加</div>
         <div class="fg">
-          <div class="fi full"><label>氏名</label><input type="text" id="ma-name" placeholder="例：山田 太郎"></div>
+          <div class="fi"><label>姓</label><input type="text" id="ma-first-name" placeholder="例：山田"></div>
+          <div class="fi"><label>名</label><input type="text" id="ma-last-name" placeholder="例：太郎"></div>
           <div class="fi">
             <label>学年</label>
             <select id="ma-grade">
@@ -500,7 +495,8 @@
         <div class="modal-title">部員を編集</div>
         <input type="hidden" id="me-id">
         <div class="fg">
-          <div class="fi full"><label>氏名</label><input type="text" id="me-name"></div>
+          <div class="fi"><label>姓</label><input type="text" id="me-first-name"></div>
+          <div class="fi"><label>名</label><input type="text" id="me-last-name"></div>
           <div class="fi">
             <label>学年</label>
             <select id="me-grade">
@@ -548,11 +544,11 @@
               </select>
             </div>
             <div class="fi"><label>金額（円）</label><input type="number" id="adj-amt" min="0" placeholder="0" inputmode="numeric"></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
             <div class="fi"><label>開始月</label><input type="month" id="adj-from"></div>
             <div class="fi"><label>終了月</label><input type="month" id="adj-to"></div>
-            <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
+          </div>
+          <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
           </div>
         </div>
         <div class="mact">
