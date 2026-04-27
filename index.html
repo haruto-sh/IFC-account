@@ -50,16 +50,6 @@
         <button class="btn bs sm" onclick="signOut()" style="flex-shrink:0;font-size:11px;padding:4px 10px">ログアウト</button>
       </header>
 
-      <!-- Desktop top nav -->
-      <nav id="top-nav">
-        <button class="nav-btn active" onclick="showPage('dashboard')">ダッシュボード</button>
-        <button class="nav-btn" onclick="showPage('transactions')">収支入力</button>
-        <button class="nav-btn" onclick="showPage('ledger')">帳簿</button>
-        <button class="nav-btn" onclick="showPage('members')">部員名簿</button>
-        <button class="nav-btn" onclick="showPage('fees')">部費管理</button>
-        <button class="nav-btn" onclick="showPage('report')">レポート</button>
-      </nav>
-
       <!-- Mobile bottom nav -->
       <nav id="bottom-nav">
         <div class="bnav-inner">
@@ -124,44 +114,59 @@
           <div class="tx-pc-layout">
             <div class="card">
               <div class="ctitle">取引を追加</div>
-              <div style="margin-bottom:4px"><label>種別</label></div>
-              <div class="tog3">
-                <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
-                <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
-                <button class="tbtn transfer"  id="t-transfer" onclick="setType('transfer')">口座振替</button>
-              </div>
-              <div id="normal-fields">
-                <div style="margin-bottom:4px"><label>口座</label></div>
-                <div class="tog2">
-                  <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
-                  <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
+              <fieldset style="border:none;padding:0;margin-bottom:12px">
+                <legend style="margin-bottom:4px;font-size:0.9em">種別</legend>
+                <div class="tog3">
+                  <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
+                  <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
+                  <button class="tbtn transfer"  id="t-transfer" onclick="setType('transfer')">口座振替</button>
                 </div>
-                <div class="fg">
-                  <div class="fi"><label>日付</label><input type="date" id="tx-date"></div>
-                  <div class="fi"><label>金額（円）</label><input type="number" id="tx-amt" placeholder="0" min="0" inputmode="numeric"></div>
-                  <div class="fi full"><label>摘要</label><input type="text" id="tx-desc" placeholder="例：5月分部費、備品購入"></div>
-                  <div class="fi full">
-                    <label>科目</label>
-                    <select id="tx-cat">
-                      <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
-                      <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
-                    </select>
+              </fieldset>
+              <div id="normal-fields">
+                <fieldset style="border:none;padding:0;margin-bottom:12px">
+                  <legend style="margin-bottom:4px;font-size:0.9em">口座</legend>
+                  <div class="tog2">
+                    <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
+                    <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
                   </div>
-                  <div class="fi full"><label>備考</label><textarea id="tx-note" placeholder="任意"></textarea></div>
+                </fieldset>
+                <div class="fg">
+                  <div class="fi">
+                    <label for="tx-date">日付</label>
+                    <input type="date" id="tx-date" name="transaction-date" autocomplete="off">
+                  </div>
+                  <div class="fi">
+                    <label for="tx-amt">金額（円）</label>
+                    <input type="number" id="tx-amt" name="transaction-amount" placeholder="0" min="0" inputmode="numeric" autocomplete="off">
+                  </div>
+                  <div class="fi full">
+                    <label for="tx-desc">摘要</label>
+                    <input type="text" id="tx-desc" name="transaction-description" placeholder="例：5月分部費、備品購入" autocomplete="off">
+                  </div>
+                  <div class="fi full">
+                    <label for="tx-cls">科目分類</label>
+                    <select id="tx-cls" name="transaction-class" onchange="updateTxCategories()" autocomplete="off"></select>
+                  </div>
+                  <div class="fi full">
+                    <label for="tx-cat">科目</label>
+                    <select id="tx-cat" name="transaction-category" autocomplete="off"></select>
+                  </div>
+                  <button class="btn bs sm" style="width:100%" onclick="openCategoryModal()">科目設定</button>
+                  <div class="fi full"><label for="tx-note">備考</label><textarea id="tx-note" name="transaction-note" placeholder="任意" autocomplete="off"></textarea></div>
                 </div>
               </div>
               <div id="transfer-fields" style="display:none">
                 <div class="fg">
-                  <div class="fi"><label>日付</label><input type="date" id="tr-date"></div>
-                  <div class="fi"><label>金額（円）</label><input type="number" id="tr-amt" placeholder="0" min="0" inputmode="numeric"></div>
-                  <div class="fi"><label>移動元</label>
-                    <select id="tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
+                  <div class="fi"><label for="tr-date">日付</label><input type="date" id="tr-date" name="transfer-date" autocomplete="off"></div>
+                  <div class="fi"><label for="tr-amt">金額（円）</label><input type="number" id="tr-amt" name="transfer-amount" placeholder="0" min="0" inputmode="numeric" autocomplete="off"></div>
+                  <div class="fi"><label for="tr-from">移動元</label>
+                    <select id="tr-from" name="transfer-from" autocomplete="off"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
                   </div>
-                  <div class="fi"><label>移動先</label>
-                    <select id="tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
+                  <div class="fi"><label for="tr-to">移動先</label>
+                    <select id="tr-to" name="transfer-to" autocomplete="off"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
                   </div>
-                  <div class="fi full"><label>摘要</label><input type="text" id="tr-desc" placeholder="例：銀行から現金引き出し"></div>
-                  <div class="fi full"><label>備考</label><textarea id="tr-note" placeholder="任意"></textarea></div>
+                  <div class="fi full"><label for="tr-desc">摘要</label><input type="text" id="tr-desc" name="transfer-description" placeholder="例：銀行から現金引き出し" autocomplete="off"></div>
+                  <div class="fi full"><label for="tr-note">備考</label><textarea id="tr-note" name="transfer-note" placeholder="任意" autocomplete="off"></textarea></div>
                 </div>
               </div>
               <button class="btn bp" style="width:100%;margin-top:12px" onclick="addTx()">追加する</button>
@@ -170,10 +175,10 @@
               <div class="sh">
                 <div class="st">取引一覧</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <select id="f-acct" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                  <select id="f-acct" name="filter-account" onchange="renderTx()" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべての口座</option><option value="cash">現金</option><option value="bank">銀行</option>
                   </select>
-                  <select id="f-type" onchange="renderTx()" style="font-size:12px;padding:5px 8px">
+                  <select id="f-type" name="filter-type" onchange="renderTx()" style="font-size:12px;padding:5px 8px" autocomplete="off">
                     <option value="">すべて</option><option value="income">収入</option>
                     <option value="expense">支出</option><option value="transfer">口座振替</option>
                   </select>
@@ -194,10 +199,10 @@
             <div class="sh">
               <div class="st">取引一覧</div>
               <div style="display:flex;gap:6px">
-                <select id="f-acct-sp" onchange="renderTx()" style="flex:1;font-size:12px;padding:5px 8px">
+                <select id="f-acct-sp" name="filter-account-sp" onchange="renderTx()" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">すべて</option><option value="cash">現金</option><option value="bank">銀行</option>
                 </select>
-                <select id="f-type-sp" onchange="renderTx()" style="flex:1;font-size:12px;padding:5px 8px">
+                <select id="f-type-sp" name="filter-type-sp" onchange="renderTx()" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px" autocomplete="off">
                   <option value="">収支</option><option value="income">収入</option>
                   <option value="expense">支出</option><option value="transfer">振替</option>
                 </select>
@@ -226,60 +231,60 @@
                 <button class="bs-abtn cash on" onclick="setBsAcct('cash',this)">現金</button>
                 <button class="bs-abtn bank"    onclick="setBsAcct('bank',this)">銀行預金</button>
               </div>
+              <div class="bs-field">
+                <label class="bs-label" for="bs-date">日付</label>
+                <input type="date" id="bs-date" name="bs-date" class="bs-input" autocomplete="off">
+              </div>
               <div class="bs-amt-wrap">
-                <div class="bs-amt-label">金額（円）</div>
-                <input type="number" id="bs-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
+                <label class="bs-amt-label" for="bs-amt">金額（円）</label>
+                <input type="number" id="bs-amt" name="bs-amount" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric" autocomplete="off">
               </div>
               <div class="bs-field">
-                <label class="bs-label">摘要</label>
-                <input type="text" id="bs-desc" class="bs-input" placeholder="例：5月分部費、備品購入">
+                <label class="bs-label" for="bs-desc">摘要</label>
+                <input type="text" id="bs-desc" name="bs-description" class="bs-input" placeholder="例：5月分部費、備品購入" autocomplete="off">
               </div>
               <div class="bs-row2">
                 <div class="bs-field">
-                  <label class="bs-label">日付</label>
-                  <input type="date" id="bs-date" class="bs-input">
+                  <label class="bs-label" for="bs-cls">科目分類</label>
+                  <select id="bs-cls" name="bs-class" class="bs-input" onchange="updateBsCategories()" autocomplete="off"></select>
                 </div>
                 <div class="bs-field">
-                  <label class="bs-label">科目</label>
-                  <select id="bs-cat" class="bs-input">
-                    <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
-                    <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
-                  </select>
+                  <label class="bs-label" for="bs-cat">科目</label>
+                  <select id="bs-cat" name="bs-category" class="bs-input" autocomplete="off"></select>
                 </div>
               </div>
+
               <div class="bs-field">
-                <label class="bs-label">備考（任意）</label>
-                <input type="text" id="bs-note" class="bs-input" placeholder="任意">
+                <label class="bs-label" for="bs-note">備考（任意）</label>
+                <input type="text" id="bs-note" name="bs-note" class="bs-input" placeholder="任意" autocomplete="off">
               </div>
             </div>
             <div id="bs-transfer" style="display:none">
+              <div class="bs-field">
+                <label class="bs-label" for="bs-tr-date">日付</label>
+                <input type="date" id="bs-tr-date" name="bs-transfer-date" class="bs-input" autocomplete="off">
+              </div>
               <div class="bs-amt-wrap">
-                <div class="bs-amt-label">金額（円）</div>
-                <input type="number" id="bs-tr-amt" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric">
+                <label class="bs-amt-label" for="bs-tr-amt">金額（円）</label>
+                <input type="number" id="bs-tr-amt" name="bs-transfer-amount" class="bs-amt-input" placeholder="0" min="0" inputmode="numeric" autocomplete="off">
               </div>
               <div class="bs-row2">
                 <div class="bs-field">
-                  <label class="bs-label">移動元</label>
-                  <select id="bs-tr-from" class="bs-input">
+                  <label class="bs-label" for="bs-tr-from">移動元</label>
+                  <select id="bs-tr-from" name="bs-transfer-from" class="bs-input" autocomplete="off">
                     <option value="cash">現金</option><option value="bank">銀行預金</option>
                   </select>
                 </div>
                 <div class="bs-field">
-                  <label class="bs-label">移動先</label>
-                  <select id="bs-tr-to" class="bs-input">
+                  <label class="bs-label" for="bs-tr-to">移動先</label>
+                  <select id="bs-tr-to" name="bs-transfer-to" class="bs-input" autocomplete="off">
                     <option value="bank">銀行預金</option><option value="cash">現金</option>
                   </select>
                 </div>
               </div>
-              <div class="bs-row2">
-                <div class="bs-field">
-                  <label class="bs-label">日付</label>
-                  <input type="date" id="bs-tr-date" class="bs-input">
-                </div>
-                <div class="bs-field">
-                  <label class="bs-label">摘要</label>
-                  <input type="text" id="bs-tr-desc" class="bs-input" placeholder="例：現金引き出し">
-                </div>
+              <div class="bs-field">
+                <label class="bs-label" for="bs-tr-desc">摘要</label>
+                <input type="text" id="bs-tr-desc" name="bs-transfer-description" class="bs-input" placeholder="例：現金引き出し" autocomplete="off">
               </div>
             </div>
             <button class="bs-submit" onclick="addTxFromSheet()">追加する</button>
@@ -307,11 +312,11 @@
             <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-            <select id="f-attr" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px">
+            <select id="f-attr" name="filter-attribute" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての属性</option><option value="male">男プレ</option>
               <option value="female">女プレ</option><option value="manager">マネージャー</option><option value="exec">幹部上</option>
             </select>
-            <select id="f-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px">
+            <select id="f-grade" name="filter-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての学年</option>
               <option value="26">26</option><option value="25">25</option><option value="24">24</option>
               <option value="23">23</option><option value="22">22</option><option value="21">21</option>
@@ -338,8 +343,8 @@
           <div class="sh">
             <div class="st">月別回収管理</div>
             <div style="display:flex;align-items:center;gap:8px">
-              <label style="font-size:12px;color:var(--tx2)">対象月</label>
-              <input type="month" id="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px">
+              <label for="fee-month" style="font-size:12px;color:var(--tx2)">対象月</label>
+              <input type="month" id="fee-month" name="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px" autocomplete="off">
             </div>
           </div>
 
@@ -410,45 +415,50 @@
 
         <!-- 通常取引フィールド -->
         <div id="etx-normal">
-          <div style="margin-bottom:6px"><label>種別</label></div>
-          <div class="tog2" style="margin-bottom:12px">
-            <button class="tbtn income" id="etx-t-income"  onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
-            <button class="tbtn expense" id="etx-t-expense" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
-          </div>
-          <div style="margin-bottom:6px"><label>口座</label></div>
-          <div class="tog2" style="margin-bottom:12px">
-            <button class="tbtn cash" id="etx-a-cash" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
-            <button class="tbtn bank" id="etx-a-bank" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
-          </div>
-          <div class="fg">
-            <div class="fi"><label>日付</label><input type="date" id="etx-date"></div>
-            <div class="fi full">
-              <label>科目</label>
-              <select id="etx-cat">
-                <option>部費</option><option>用具・備品</option><option>合宿・遠征</option>
-                <option>大会参加費</option><option>交通費</option><option>消耗品</option><option>その他</option>
-              </select>
+          <fieldset style="border:none;padding:0;margin-bottom:12px">
+            <legend style="margin-bottom:6px;font-size:0.9em">種別</legend>
+            <div class="tog2" style="margin-bottom:12px">
+              <button class="tbtn income" id="etx-t-income"  onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
+              <button class="tbtn expense" id="etx-t-expense" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
             </div>
-            <div class="fi full"><label>摘要</label><input type="text" id="etx-desc"></div>
-            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt" min="0" inputmode="numeric"></div>
-            <div class="fi full"><label>備考</label><input type="text" id="etx-note" placeholder="任意"></div>
+          </fieldset>
+          <fieldset style="border:none;padding:0;margin-bottom:12px">
+            <legend style="margin-bottom:6px;font-size:0.9em">口座</legend>
+            <div class="tog2" style="margin-bottom:12px">
+              <button class="tbtn cash" id="etx-a-cash" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
+              <button class="tbtn bank" id="etx-a-bank" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
+            </div>
+          </fieldset>
+          <div class="fg">
+            <div class="fi"><label for="etx-date">日付</label><input type="date" id="etx-date" name="edit-transaction-date" autocomplete="off"></div>
+            <div class="fi full">
+              <label for="etx-cls">科目分類</label>
+              <select id="etx-cls" name="edit-transaction-class" onchange="updateEditCategories()" autocomplete="off"></select>
+            </div>
+            <div class="fi full">
+              <label for="etx-cat">科目</label>
+              <select id="etx-cat" name="edit-transaction-category" autocomplete="off"></select>
+            </div>
+            <div class="fi full"><label for="etx-desc">摘要</label><input type="text" id="etx-desc" name="edit-transaction-description" autocomplete="off"></div>
+            <div class="fi"><label for="etx-amt">金額（円）</label><input type="number" id="etx-amt" name="edit-transaction-amount" min="0" inputmode="numeric" autocomplete="off"></div>
+            <div class="fi full"><label for="etx-note">備考</label><input type="text" id="etx-note" name="edit-transaction-note" placeholder="任意" autocomplete="off"></div>
           </div>
         </div>
 
         <!-- 振替フィールド -->
         <div id="etx-transfer" style="display:none">
           <div class="fg">
-            <div class="fi"><label>日付</label><input type="date" id="etx-date-tr" oninput="document.getElementById('etx-date').value=this.value"></div>
+            <div class="fi"><label for="etx-date-tr">日付</label><input type="date" id="etx-date-tr" name="edit-transfer-date" autocomplete="off" oninput="document.getElementById('etx-date').value=this.value"></div>
             <div class="fi">
-              <label>移動元</label>
-              <select id="etx-tr-from"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
+              <label for="etx-tr-from">移動元</label>
+              <select id="etx-tr-from" name="edit-transfer-from" autocomplete="off"><option value="cash">現金</option><option value="bank">銀行預金</option></select>
             </div>
             <div class="fi">
-              <label>移動先</label>
-              <select id="etx-tr-to"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
+              <label for="etx-tr-to">移動先</label>
+              <select id="etx-tr-to" name="edit-transfer-to" autocomplete="off"><option value="bank">銀行預金</option><option value="cash">現金</option></select>
             </div>
-            <div class="fi full"><label>摘要</label><input type="text" id="etx-tr-desc"></div>
-            <div class="fi"><label>金額（円）</label><input type="number" id="etx-amt-tr" min="0" inputmode="numeric" oninput="document.getElementById('etx-amt').value=this.value"></div>
+            <div class="fi full"><label for="etx-tr-desc">摘要</label><input type="text" id="etx-tr-desc" name="edit-transfer-description" autocomplete="off"></div>
+            <div class="fi"><label for="etx-amt-tr">金額（円）</label><input type="number" id="etx-amt-tr" name="edit-transfer-amount" min="0" inputmode="numeric" autocomplete="off" oninput="document.getElementById('etx-amt').value=this.value"></div>
           </div>
         </div>
 
@@ -465,18 +475,18 @@
       <div class="modal">
         <div class="modal-title">部員を追加</div>
         <div class="fg">
-          <div class="fi"><label>姓</label><input type="text" id="ma-first-name" placeholder="例：山田"></div>
-          <div class="fi"><label>名</label><input type="text" id="ma-last-name" placeholder="例：太郎"></div>
+          <div class="fi"><label for="ma-first-name">姓</label><input type="text" id="ma-first-name" name="member-first-name" placeholder="例：山田" autocomplete="given-name"></div>
+          <div class="fi"><label for="ma-last-name">名</label><input type="text" id="ma-last-name" name="member-last-name" placeholder="例：太郎" autocomplete="family-name"></div>
           <div class="fi">
-            <label>学年</label>
-            <select id="ma-grade">
+            <label for="ma-grade">学年</label>
+            <select id="ma-grade" name="member-grade" autocomplete="off">
               <option value="26">26</option><option value="25">25</option><option value="24">24</option>
               <option value="23">23</option><option value="22">22</option><option value="21">21</option>
             </select>
           </div>
           <div class="fi">
-            <label>属性</label>
-            <select id="ma-attr">
+            <label for="ma-attr">属性</label>
+            <select id="ma-attr" name="member-attr" autocomplete="off">
               <option value="male">男プレ</option><option value="female">女プレ</option>
               <option value="manager">マネージャー</option><option value="exec">幹部上</option>
             </select>
@@ -495,18 +505,18 @@
         <div class="modal-title">部員を編集</div>
         <input type="hidden" id="me-id">
         <div class="fg">
-          <div class="fi"><label>姓</label><input type="text" id="me-first-name"></div>
-          <div class="fi"><label>名</label><input type="text" id="me-last-name"></div>
+          <div class="fi"><label for="me-first-name">姓</label><input type="text" id="me-first-name" name="edit-member-first-name" autocomplete="given-name"></div>
+          <div class="fi"><label for="me-last-name">名</label><input type="text" id="me-last-name" name="edit-member-last-name" autocomplete="family-name"></div>
           <div class="fi">
-            <label>学年</label>
-            <select id="me-grade">
+            <label for="me-grade">学年</label>
+            <select id="me-grade" name="edit-member-grade" autocomplete="off">
               <option value="26">26</option><option value="25">25</option><option value="24">24</option>
               <option value="23">23</option><option value="22">22</option><option value="21">21</option>
             </select>
           </div>
           <div class="fi">
-            <label>属性</label>
-            <select id="me-attr">
+            <label for="me-attr">属性</label>
+            <select id="me-attr" name="edit-member-attr" autocomplete="off">
               <option value="male">男プレ</option><option value="female">女プレ</option>
               <option value="manager">マネージャー</option><option value="exec">幹部上</option>
             </select>
@@ -526,10 +536,10 @@
         <div class="modal-title">部費設定</div>
         <div class="ctitle" style="margin-bottom:8px">属性別の基本月額</div>
         <div class="fg" style="margin-bottom:16px">
-          <div class="fi"><label><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" min="0" inputmode="numeric"></div>
-          <div class="fi"><label><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" min="0" inputmode="numeric"></div>
-          <div class="fi"><label><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" min="0" inputmode="numeric"></div>
-          <div class="fi"><label><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" min="0" inputmode="numeric"></div>
+          <div class="fi"><label for="fs-male"><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" name="fee-male" min="0" inputmode="numeric" autocomplete="off"></div>
+          <div class="fi"><label for="fs-female"><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" name="fee-female" min="0" inputmode="numeric" autocomplete="off"></div>
+          <div class="fi"><label for="fs-manager"><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" name="fee-manager" min="0" inputmode="numeric" autocomplete="off"></div>
+          <div class="fi"><label for="fs-exec"><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" name="fee-exec" min="0" inputmode="numeric" autocomplete="off"></div>
         </div>
         <hr class="dv">
         <div class="ctitle" style="margin-bottom:8px">一時的な金額調整（期間指定）</div>
@@ -537,16 +547,16 @@
         <div style="background:var(--sur2);border-radius:8px;padding:12px">
           <div class="fg" style="margin-bottom:8px">
             <div class="fi">
-              <label>属性</label>
-              <select id="adj-attr">
+              <label for="adj-attr">属性</label>
+              <select id="adj-attr" name="adjustment-attr" autocomplete="off">
                 <option value="male">男プレ</option><option value="female">女プレ</option>
                 <option value="manager">マネージャー</option><option value="exec">幹部上</option>
               </select>
             </div>
-            <div class="fi"><label>金額（円）</label><input type="number" id="adj-amt" min="0" placeholder="0" inputmode="numeric"></div>
+            <div class="fi"><label for="adj-amt">金額（円）</label><input type="number" id="adj-amt" name="adjustment-amount" min="0" placeholder="0" inputmode="numeric" autocomplete="off"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-            <div class="fi"><label>開始月</label><input type="month" id="adj-from"></div>
-            <div class="fi"><label>終了月</label><input type="month" id="adj-to"></div>
+            <div class="fi"><label for="adj-from">開始月</label><input type="month" id="adj-from" name="adjustment-from" autocomplete="off"></div>
+            <div class="fi"><label for="adj-to">終了月</label><input type="month" id="adj-to" name="adjustment-to" autocomplete="off"></div>
           </div>
           <button class="btn bs sm" onclick="addAdj()" style="height:44px">追加</button>
           </div>

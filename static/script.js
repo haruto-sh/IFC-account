@@ -12,6 +12,7 @@ const SH = {
   FEE_REC: 'fee_records',
   PRAC:    'practice_count',
   FEE_SET: 'fee_settings',
+  CATEGORIES: 'categories',
 };
 
 /* ================================================================
@@ -32,7 +33,7 @@ let userEmail   = null;
 ================================================================ */
 let nid = 1;
 let S = {
-  txs:[], members:[], feeRec:{}, pracCount:{},
+  txs:[], members:[], feeRec:{}, pracCount:{}, categories:[],
   fee: { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] },
   acct: 'cash',
   type: 'income',
@@ -211,11 +212,12 @@ async function ensureSheets() {
       body: JSON.stringify({ requests: toAdd.map(title => ({ addSheet:{ properties:{ title } } })) }),
     });
     const headers = {
-      [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','cat','note']],
+      [SH.TX]:      [['id','date','type','acct','toAcct','amount','desc','classification','cat','note']],
       [SH.MEMBERS]: [['id','name','grade','attr']],
       [SH.FEE_REC]: [['id','member_id','ym','paid']],
       [SH.PRAC]:    [['id','member_id','ym','count']],
       [SH.FEE_SET]: [['id','attr','amount','type','from_ym','to_ym']],
+      [SH.CATEGORIES]: [['type','classification','category','order']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
   }
@@ -228,19 +230,20 @@ async function loadAll() {
   setLoading(true, 'データを読み込み中...');
   await ensureSheets();
 
-  const [txRows, mRows, frRows, pcRows, fsRows] = await Promise.all([
-    sheetsGet(SH.TX      + '!A2:I'),
+  const [txRows, mRows, frRows, pcRows, fsRows, catRows] = await Promise.all([
+    sheetsGet(SH.TX      + '!A2:J'),
     sheetsGet(SH.MEMBERS + '!A2:D'),
     sheetsGet(SH.FEE_REC + '!A2:D'),
     sheetsGet(SH.PRAC    + '!A2:D'),
     sheetsGet(SH.FEE_SET + '!A2:F'),
+    sheetsGet(SH.CATEGORIES + '!A2:D'),
   ]);
 
   S.txs = txRows
     .filter(r => r[0] && r[1] && r[2])  // id・date・typeが存在する行のみ
     .map(r => ({
       id:r[0]|0, date:String(r[1]), type:r[2], acct:r[3]||'cash',
-      toAcct:r[4]||'', amount:r[5]|0, desc:r[6]||'', cat:r[7]||'その他', note:r[8]||'',
+      toAcct:r[4]||'', amount:r[5]|0, desc:r[6]||'', classification:r[7]||'その他', cat:r[8]||'その他', note:r[9]||'',
     }));
 
   S.members = mRows
@@ -271,6 +274,11 @@ async function loadAll() {
   });
   if (fsRows.length === 0) await saveFeeSettings();
 
+  S.categories = catRows
+    .filter(r => r[0] && r[1] && r[2])
+    .map(r => ({ type:r[0], classification:r[1], category:r[2], order:r[3]|0 }))
+    .sort((a,b) => a.order - b.order);
+
   setLoading(false);
 }
 
@@ -288,7 +296,7 @@ async function saveSheet(fn) {
 
 const saveTx = () => saveSheet(async () => {
   await sheetsWriteAll(SH.TX,
-    S.txs.map(t => [t.id,t.date,t.type,t.acct,t.toAcct||'',t.amount,t.desc,t.cat,t.note||'']));
+    S.txs.map(t => [t.id,t.date,t.type,t.acct,t.toAcct||'',t.amount,t.desc,t.classification||'',t.cat,t.note||'']));
 });
 
 const saveMembers = () => saveSheet(async () => {
@@ -320,8 +328,15 @@ const saveFeeSettings = () => saveSheet(async () => {
 });
 
 function showSaveInd(on) {
-  const el = document.getElementById('save-ind');
-  if (el) el.style.opacity = on ? '1' : '0';
+  const saveInd = document.getElementById('save-ind');
+  const hbals = document.querySelector('.hbals');
+  if (saveInd) {
+    saveInd.style.display = on ? 'block' : 'none';
+    saveInd.style.opacity = on ? '1' : '0';
+  }
+  if (hbals) {
+    hbals.style.display = on ? 'none' : 'flex';
+  }
 }
 
 /* ================================================================
@@ -334,9 +349,12 @@ async function startApp() {
     document.getElementById('main-app').style.display = 'flex';
     const today = new Date(), ym = toYM(today);
     document.getElementById('tx-date').value   = today.toISOString().split('T')[0];
+    document.getElementById('bs-date').value   = today.toISOString().split('T')[0];
     document.getElementById('tr-date').value   = today.toISOString().split('T')[0];
     document.getElementById('fee-month').value = ym;
     render();
+    setType('income');
+    initializeCategories();
   } catch(e) {
     console.error(e);
     setLoading(true, 'データ読み込みに失敗しました。ページを再読み込みしてください。');
@@ -488,7 +506,7 @@ function txRow(t) {
     acctBadge = `<span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span>`;
     amtStr    = (t.type==='income'?'+':'-') + fmt(t.amount);
     amtCls    = t.type;
-    catLabel  = t.cat;
+    catLabel  = t.classification ? `${t.classification} > ${t.cat}` : t.cat;
   }
   // 日付を m/d 形式に変換
   const dateParts = t.date.slice(5).split('-');
@@ -533,12 +551,77 @@ function setType(t) {
     document.getElementById('t-'+x).classList.toggle('on', x===t));
   document.getElementById('normal-fields').style.display   = t==='transfer' ? 'none'  : 'block';
   document.getElementById('transfer-fields').style.display = t==='transfer' ? 'block' : 'none';
+
+  // 科目分類を type に基づいて更新
+  if (t !== 'transfer') {
+    const txCls = document.getElementById('tx-cls');
+    if (txCls) {
+      const classifications = [...new Set(S.categories.filter(c => c.type === t).map(c => c.classification))];
+      txCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+      updateTxCategories();
+    }
+  }
 }
 
 function setAcct(a) {
   S.acct = a;
   document.getElementById('a-cash').classList.toggle('on', a==='cash');
   document.getElementById('a-bank').classList.toggle('on', a==='bank');
+}
+
+/* ================================================================
+   CATEGORY SELECTION
+================================================================ */
+function initializeCategories() {
+  // PC版の科目分類初期化
+  const txCls = document.getElementById('tx-cls');
+  if (txCls) {
+    const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
+    txCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    updateTxCategories();
+  }
+
+  // モバイル版の科目分類初期化
+  const bsCls = document.getElementById('bs-cls');
+  if (bsCls) {
+    const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
+    bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    updateBsCategories();
+  }
+
+  // 編集画面の科目分類初期化
+  const etxCls = document.getElementById('etx-cls');
+  if (etxCls) {
+    const classifications = [...new Set(S.categories.filter(c => c.type === 'income').map(c => c.classification))];
+    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+  }
+}
+
+function updateTxCategories() {
+  const cls = document.getElementById('tx-cls')?.value || '';
+  const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
+  const catSelect = document.getElementById('tx-cat');
+  if (catSelect) {
+    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+  }
+}
+
+function updateBsCategories() {
+  const cls = document.getElementById('bs-cls')?.value || '';
+  const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
+  const catSelect = document.getElementById('bs-cat');
+  if (catSelect) {
+    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+  }
+}
+
+function updateEditCategories() {
+  const cls = document.getElementById('etx-cls')?.value || '';
+  const cats = S.categories.filter(c => c.type === S.type && c.classification === cls).sort((a, b) => a.order - b.order);
+  const catSelect = document.getElementById('etx-cat');
+  if (catSelect) {
+    catSelect.innerHTML = cats.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+  }
 }
 
 /* ================================================================
@@ -561,12 +644,13 @@ async function addTx() {
     const date   = document.getElementById('tx-date').value;
     const amount = parseInt(document.getElementById('tx-amt').value);
     const desc   = document.getElementById('tx-desc').value.trim();
+    const classification = document.getElementById('tx-cls').value;
     const cat    = document.getElementById('tx-cat').value;
     const note   = document.getElementById('tx-note').value.trim();
     if (!date)           { toast('日付を入力してください'); return; }
     if (!amount||amount<=0) { toast('金額を正しく入力してください'); return; }
     if (!desc)           { toast('摘要を入力してください'); return; }
-    S.txs.push({ id:nid++, date, type:S.type, acct:S.acct, amount, desc, cat, note });
+    S.txs.push({ id:nid++, date, type:S.type, acct:S.acct, amount, desc, classification, cat, note });
     ['tx-amt','tx-desc','tx-note'].forEach(id => document.getElementById(id).value='');
   }
   toast('追加しました ✓');
@@ -594,7 +678,8 @@ function openEditTx(id) {
     document.getElementById('etx-tr-to').value   = t.toAcct;
     document.getElementById('etx-tr-desc').value = t.desc;
   } else {
-    // 種別ボタン
+    // 種別ボタン & S.type 更新
+    S.type = t.type;
     ['income','expense'].forEach(tp => {
       document.getElementById('etx-t-' + tp).classList.toggle('on', t.type === tp);
     });
@@ -602,7 +687,14 @@ function openEditTx(id) {
     ['cash','bank'].forEach(ac => {
       document.getElementById('etx-a-' + ac).classList.toggle('on', t.acct === ac);
     });
-    document.getElementById('etx-cat').value = t.cat;
+    // 科目分類と科目
+    const etxCls = document.getElementById('etx-cls');
+    const classifications = [...new Set(S.categories.filter(c => c.type === t.type).map(c => c.classification))];
+    etxCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+    etxCls.value = t.classification || classifications[0];
+    updateEditCategories();
+    const catSelect = document.getElementById('etx-cat');
+    catSelect.value = t.cat || catSelect.options[0]?.value || '';
   }
   openM('m-edit-tx');
 }
@@ -631,6 +723,7 @@ async function saveEditTx() {
     t.date   = document.getElementById('etx-date').value;
     t.amount = parseInt(document.getElementById('etx-amt').value) || 0;
     t.desc   = document.getElementById('etx-desc').value.trim();
+    t.classification = document.getElementById('etx-cls').value;
     t.cat    = document.getElementById('etx-cat').value;
     t.note   = document.getElementById('etx-note').value.trim();
   }
@@ -678,7 +771,7 @@ function renderCashLedger(acct, title) {
       else                { inAmt=t.amount;  bal+=t.amount; totalIn+=t.amount;  label=`振替入金←${t.acct==='cash'?'現金':'銀行'}`; }
     }
     rows += `<tr>
-      <td class="num">${t.date}</td><td>${label}</td>
+      <td class="num">${t.date.replace(/-/g, '/')}</td><td>${label}</td>
       <td class="num" style="color:var(--grn)">${inAmt?fmtN(inAmt):''}</td>
       <td class="num" style="color:var(--red)">${outAmt?fmtN(outAmt):''}</td>
       <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
@@ -698,31 +791,32 @@ function renderCashLedger(acct, title) {
 }
 
 function renderCatLedger() {
-  const cats = {};
+  const clss = {};
   S.txs.filter(t => t.type!=='transfer').forEach(t => {
-    if (!cats[t.cat]) cats[t.cat] = [];
-    cats[t.cat].push(t);
+    if (!clss[t.classification]) clss[t.classification] = [];
+    clss[t.classification].push(t);
   });
   let html = '';
-  Object.keys(cats).sort().forEach(cat => {
-    const txs = cats[cat].sort((a,b) => a.date.localeCompare(b.date));
+  Object.keys(clss).sort().forEach(cls => {
+    const txs = clss[cls].sort((a,b) => a.date.localeCompare(b.date));
     let total=0, rows='';
     txs.forEach(t => {
       const amt = t.type==='income' ? t.amount : -t.amount;
       total += amt;
       rows += `<tr>
-        <td class="num">${t.date}</td><td>${t.desc}</td>
+        <td class="num">${t.date.replace(/-/g, '/')}</td><td>${t.desc}</td>
+        <td class="num" style="font-size:11px;color:var(--tx2)">${t.classification} > ${t.cat}</td>
         <td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td>
         <td class="num" style="color:${t.type==='income'?'var(--grn)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
       </tr>`;
     });
     html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">
       <div style="padding:10px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between">
-        <span>${cat}</span>
+        <span>${cls}</span>
         <span style="font-family:'DM Mono',monospace;font-size:13px;color:${total>=0?'var(--grn)':'var(--red)'}">${total>=0?'+':''}${fmtN(total)}</span>
       </div>
       <div style="overflow-x:auto"><table class="ltbl">
-        <thead><tr><th>日付</th><th>摘要</th><th>口座</th><th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th><th>摘要</th><th style="text-align:center">科目</th><th>口座</th><th style="text-align:right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div></div>`;
   });
@@ -851,8 +945,9 @@ function renderFee() {
     const isPaid = !!rec[m.id];
     const fee    = calcFee(m.attr, ym, pc[m.id]||0);
     const pi = m.attr==='exec'
-      ? `<input type="number" min="0" max="31" value="${pc[m.id]||0}"
+      ? `<input type="number" id="prac-${m.id}-${ym.replace('-','_')}" name="practice-count" min="0" max="31" value="${pc[m.id]||0}"
            style="width:62px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
+           autocomplete="off"
            onchange="setPrac(${m.id},'${ym}',this.value)">`
       : `<span style="color:var(--tx3);font-size:12px">—</span>`;
     return `<tr>
@@ -1028,16 +1123,16 @@ function renderReport() {
           </div></div>`;
       }).join('');
 
-  const cats = {};
+  const clss = {};
   S.txs.filter(t => t.type!=='transfer').forEach(t => {
-    if (!cats[t.cat]) cats[t.cat] = { inc:0,exp:0 };
-    if (t.type==='income') cats[t.cat].inc+=t.amount;
-    else cats[t.cat].exp+=t.amount;
+    if (!clss[t.classification]) clss[t.classification] = { inc:0,exp:0 };
+    if (t.type==='income') clss[t.classification].inc+=t.amount;
+    else clss[t.classification].exp+=t.amount;
   });
   const cel = document.getElementById('r-cats');
-  if (cel) cel.innerHTML = Object.keys(cats).sort().length===0 ? '<div class="empty">データがありません</div>'
-    : Object.keys(cats).sort().map(k => {
-        const d=cats[k];
+  if (cel) cel.innerHTML = Object.keys(clss).sort().length===0 ? '<div class="empty">データがありません</div>'
+    : Object.keys(clss).sort().map(k => {
+        const d=clss[k];
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)">
           <span style="font-size:12px;background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span>
           <span style="font-size:13px">
@@ -1184,11 +1279,22 @@ function closeBottomSheet() {
 }
 
 function setBsType(type, el) {
+  S.type = type;
   bsType = type;
   el.closest('.bs-tog3').querySelectorAll('.bs-tbtn').forEach(b => b.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('bs-normal').style.display   = type === 'transfer' ? 'none' : 'block';
   document.getElementById('bs-transfer').style.display = type === 'transfer' ? 'block' : 'none';
+
+  // 科目分類を type に基づいて更新
+  if (type !== 'transfer') {
+    const bsCls = document.getElementById('bs-cls');
+    if (bsCls) {
+      const classifications = [...new Set(S.categories.filter(c => c.type === type).map(c => c.classification))];
+      bsCls.innerHTML = classifications.map((cls, idx) => `<option value="${cls}" ${idx===0 ? 'selected' : ''}>${cls}</option>`).join('');
+      updateBsCategories();
+    }
+  }
 }
 
 function setBsAcct(acct, el) {
@@ -1215,12 +1321,13 @@ async function addTxFromSheet() {
     const amount = parseInt(document.getElementById('bs-amt').value);
     const desc   = document.getElementById('bs-desc').value.trim();
     const date   = document.getElementById('bs-date').value;
+    const classification = document.getElementById('bs-cls').value;
     const cat    = document.getElementById('bs-cat').value;
     const note   = document.getElementById('bs-note').value.trim();
     if (!amount || amount <= 0) { toast('金額を入力してください'); return; }
     if (!desc)                  { toast('摘要を入力してください'); return; }
     if (!date)                  { toast('日付を入力してください'); return; }
-    S.txs.push({ id: nid++, date, type: bsType, acct: bsAcct, amount, desc, cat, note });
+    S.txs.push({ id: nid++, date, type: bsType, acct: bsAcct, amount, desc, classification, cat, note });
     document.getElementById('bs-amt').value  = '';
     document.getElementById('bs-desc').value = '';
     document.getElementById('bs-note').value = '';
@@ -1270,29 +1377,4 @@ function renderTx() {
   }, { passive: true });
 })();
 
-/* FAB スクロール表示制御 */
-(function initFabScroll() {
-  const fab = document.getElementById('fab');
-  if (!fab) return;
-
-  let lastScrollY = 0;
-  let fabVisible = false;
-
-  window.addEventListener('scroll', () => {
-    const currentScrollY = window.scrollY;
-    const isScrollingUp = currentScrollY < lastScrollY;
-
-    // 上にスクロール → 表示、下にスクロール → 非表示
-    const shouldShow = isScrollingUp || currentScrollY < 100; // 上部近くなら常に表示
-
-    if (shouldShow && !fabVisible) {
-      fab.classList.add('show');
-      fabVisible = true;
-    } else if (!shouldShow && fabVisible) {
-      fab.classList.remove('show');
-      fabVisible = false;
-    }
-
-    lastScrollY = currentScrollY;
-  }, { passive: true });
-})();
+/* FAB は常時表示（スクロール制御なし） */

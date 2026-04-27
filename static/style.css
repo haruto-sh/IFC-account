@@ -85,49 +85,24 @@ header {
 .hdiv { width: 1px; height: 24px; background: var(--bdr); }
 
 /* ----------------------------------------------------------------
-   Desktop top nav
----------------------------------------------------------------- */
-#top-nav {
-  background: var(--sur);
-  border-bottom: 1px solid var(--bdr);
-  display: flex;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 20px;
-}
-.nav-btn {
-  padding: 11px 16px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--tx2);
-  border-bottom: 2px solid transparent;
-  transition: all .15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.nav-btn.active { color: var(--grn); border-bottom-color: var(--grn); font-weight: 500; }
-.nav-btn:hover:not(.active) { color: var(--tx); }
-
-/* ----------------------------------------------------------------
    Mobile bottom nav
 ---------------------------------------------------------------- */
 #bottom-nav {
-  display: none; /* モバイルのみ表示 */
+  display: flex;
   position: fixed;
   bottom: 0; left: 0; right: 0;
   height: var(--bottom-nav-h);
   background: var(--sur);
   border-top: 1px solid var(--bdr);
   z-index: 100;
+  width: 100%;
   /* iOS safe area */
   padding-bottom: env(safe-area-inset-bottom);
 }
 #bottom-nav .bnav-inner {
   display: flex;
   height: 100%;
+  width: 100%;
 }
 .bnav-btn {
   flex: 1;
@@ -168,6 +143,7 @@ main {
   max-width: 1080px;
   margin: 0 auto;
   width: 100%;
+  padding-bottom: calc(16px + var(--bottom-nav-h) + env(safe-area-inset-bottom));
 }
 .page { display: none; }
 .page.active { display: block; }
@@ -246,6 +222,7 @@ input, select, textarea {
   width: 100%;
   /* iOSのデフォルトスタイルをリセット */
   -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
 }
 select {
@@ -370,7 +347,7 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 .ltbl td { padding: 9px 12px; border-bottom: 1px solid var(--bdr); vertical-align: middle; }
 .ltbl tr:last-child td { border-bottom: none; }
 .ltbl tr:hover td { background: var(--sur2); }
-.ltbl .num     { font-family: 'DM Mono', monospace; text-align: right; }
+.ltbl .num     { font-family: 'DM Mono', monospace; text-align: left; }
 .ltbl .bal-pos { color: var(--grn); font-weight: 500; }
 .ltbl .bal-neg { color: var(--red); font-weight: 500; }
 .ltbl tfoot td { background: var(--sur2); font-weight: 600; border-top: 2px solid var(--bdr); }
@@ -484,19 +461,20 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 13px;
-  transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity .25s, transform .25s cubic-bezier(.34,1.56,.64,1);
   z-index: 999;
   white-space: nowrap;
   pointer-events: none;
+  opacity: 0;
 }
-#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ================================================================
    TAB PILLS
 ================================================================ */
 .tab-pills { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 .pill {
-  padding: 7px 14px;
+  padding: 5px 10px;
   border: 1px solid var(--bdr);
   border-radius: 20px;
   font-size: 12px;
@@ -535,6 +513,7 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   opacity: 0;
   transition: opacity .3s;
   flex-shrink: 0;
+  display: none;
 }
 
 /* ================================================================
@@ -546,10 +525,6 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   .hbals { gap: 8px; }
   .hbal .hv { font-size: 11px; }
   .hdiv { display: none; }
-
-  /* Top nav → 非表示、bottom navに切り替え */
-  #top-nav { display: none; }
-  #bottom-nav { display: block; }
 
   /* main: ボトムナビ分の余白 */
   main {
@@ -741,6 +716,7 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   padding: 0;
   outline: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
 }
 .bs-amt-input::placeholder { color: var(--bdr); }
@@ -759,6 +735,7 @@ hr.dv  { border: none; border-top: 1px solid var(--bdr); margin: 16px 0; }
   outline: none;
   width: 100%;
   -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
   transition: border-color .15s;
 }
@@ -811,9 +788,9 @@ select.bs-input {
   justify-content: center;
   transition: transform .15s, box-shadow .15s, opacity .15s;
   -webkit-tap-highlight-color: transparent;
-  opacity: 0;
-  transform: scale(0.8);
-  pointer-events: none;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
 }
 .fab.show {
   opacity: 1;
