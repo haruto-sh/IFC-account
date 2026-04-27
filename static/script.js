@@ -870,13 +870,27 @@ function renderMembers() {
   const tb = document.getElementById('m-tbody');
   if (!tb) return;
   tb.innerHTML = ms.length===0
-    ? '<tr><td colspan="4" class="empty">部員がいません</td></tr>'
-    : ms.map(m => `<tr>
+    ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
+    : ms.map(m => `<tr class="member-row" id="member-row-${m.id}">
+        <td style="text-align:center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
+        <td style="text-align:center;color:var(--tx2)">${m.grade}</td>
         <td style="font-weight:500">${m.name}</td>
-        <td style="color:var(--tx2)">${m.grade}</td>
-        <td>${attrBadge(m.attr)}</td>
-        <td style="text-align:right"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
+        <td style="text-align:center">${attrBadge(m.attr)}</td>
+        <td style="text-align:center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
       </tr>`).join('');
+  updateBulkButtons();
+}
+
+function updateMemberRowStyle(memberId) {
+  const row = document.getElementById(`member-row-${memberId}`);
+  const checkbox = row?.querySelector('.member-checkbox');
+  if (row && checkbox?.checked) {
+    row.style.backgroundColor = 'var(--sur2)';
+    row.style.fontWeight = '600';
+  } else if (row) {
+    row.style.backgroundColor = '';
+    row.style.fontWeight = '';
+  }
 }
 
 async function addMember() {
@@ -943,7 +957,11 @@ function updateBulkButtons() {
 }
 
 function toggleSelectAll(checked) {
-  document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = checked);
+  document.querySelectorAll('.member-checkbox').forEach(cb => {
+    cb.checked = checked;
+    const memberId = parseInt(cb.value);
+    updateMemberRowStyle(memberId);
+  });
   updateBulkButtons();
 }
 
