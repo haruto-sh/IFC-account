@@ -309,7 +309,12 @@
         <div class="page" id="page-members">
           <div class="sh">
             <div class="st">部員名簿</div>
-            <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
+            <div style="display:flex;gap:6px">
+              <button class="btn bp sm" onclick="openM('m-add')">＋ 部員追加</button>
+              <button class="btn bp sm" onclick="openM('m-bulk-add')">⬆ 一括登録</button>
+              <button class="btn bs sm" onclick="bulkChangeAttr()" style="display:none" id="bulk-change-btn">属性変更</button>
+              <button class="btn bd sm" onclick="bulkDelete()" style="display:none" id="bulk-delete-btn">一括削除</button>
+            </div>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
             <select id="f-attr" name="filter-attribute" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
@@ -318,13 +323,34 @@
             </select>
             <select id="f-grade" name="filter-grade" onchange="renderMembers()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
               <option value="">すべての学年</option>
-              <option value="26">26</option><option value="25">25</option><option value="24">24</option>
-              <option value="23">23</option><option value="22">22</option><option value="21">21</option>
+              <option value="26">26</option>
+              <option value="25">25</option>
+              <option value="24">24</option>
+              <option value="23">23</option>
+              <option value="22">22</option>
+              <option value="21">21</option>
             </select>
           </div>
           <div class="card" style="padding:0;overflow:hidden">
-            <table class="mtbl">
-              <thead><tr><th>氏名</th><th>学年</th><th>属性</th><th></th></tr></thead>
+            <table class="mtbl" style="width:100%">
+              <colgroup>
+                <col style="width:40px">
+                <col style="width:auto">
+                <col style="width:40px">
+                <col style="width:80px">
+                <col style="width:70px">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style="text-align:center">
+                    <input type="checkbox" id="select-all-members" onchange="toggleSelectAll(this.checked)">
+                  </th>
+                  <th>氏名</th>
+                  <th style="text-align:center">学年</th>
+                  <th style="text-align:center">属性</th>
+                  <th style="text-align:center">編集</th>
+                </tr>
+              </thead>
               <tbody id="m-tbody"></tbody>
             </table>
           </div>
@@ -342,7 +368,7 @@
 
           <div class="sh">
             <div class="st">月別回収管理</div>
-            <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap">
               <label for="fee-month" style="font-size:12px;color:var(--tx2)">対象月</label>
               <input type="month" id="fee-month" name="fee-month" onchange="renderFee()" style="font-size:13px;padding:6px 10px" autocomplete="off">
             </div>
@@ -530,7 +556,51 @@
       </div>
     </div>
 
-    <!-- 部費設定 -->
+    <!-- 一括登録 -->
+    <div class="mbg" id="m-bulk-add">
+      <div class="modal">
+        <div class="modal-title">部員を一括登録</div>
+        <div style="margin-bottom:12px;font-size:12px;color:var(--tx2)">
+          <p style="margin-bottom:8px">以下の形式で入力してください（改行区切り）：</p>
+          <p style="font-family:'DM Mono',monospace;background:var(--sur2);padding:8px;border-radius:6px;margin:0">
+            姓,名,学年,属性<br>
+            山田,太郎,26,男プレ<br>
+            花子,花子,25,女プレ
+          </p>
+        </div>
+        <div style="margin-bottom:12px">
+          <label for="bulk-members-text" style="font-weight:500;margin-bottom:6px;display:block">部員データ</label>
+          <textarea id="bulk-members-text" style="width:100%;height:200px;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;resize:none" placeholder="例:&#10;山田,太郎,26,男プレ&#10;花子,花子,25,女プレ"></textarea>
+        </div>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-bulk-add')">キャンセル</button>
+          <button class="btn bp" onclick="bulkAddMembers()">登録</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 属性一括変更 -->
+    <div class="mbg" id="m-bulk-change-attr">
+      <div class="modal">
+        <div class="modal-title">属性を一括変更</div>
+        <div style="margin-bottom:16px">
+          <label for="bulk-change-to-attr" style="font-weight:500;display:block;margin-bottom:6px">変更先の属性</label>
+          <select id="bulk-change-to-attr" style="width:100%;padding:12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px">
+            <option value="male">男プレ</option>
+            <option value="female">女プレ</option>
+            <option value="manager">マネージャー</option>
+            <option value="exec">幹部上</option>
+          </select>
+        </div>
+        <div style="padding:12px;background:var(--sur2);border-radius:8px;margin-bottom:16px;font-size:12px">
+          <div id="bulk-change-preview">選択中の部員: なし</div>
+        </div>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-bulk-change-attr')">キャンセル</button>
+          <button class="btn bp" onclick="confirmBulkChangeAttr()">変更</button>
+        </div>
+      </div>
+    </div>
     <div class="mbg" id="m-fee">
       <div class="modal">
         <div class="modal-title">部費設定</div>
@@ -540,6 +610,7 @@
           <div class="fi"><label for="fs-female"><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" name="fee-female" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-manager"><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" name="fee-manager" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-exec"><span class="bdg exec">幹部上</span> 1回あたり</label><input type="number" id="fs-exec" name="fee-exec" min="0" inputmode="numeric" autocomplete="off"></div>
+          <div class="fi"><label for="fs-max-exec"><span class="bdg exec">幹部上</span> 最大月額</label><input type="number" id="fs-max-exec" name="fee-max-exec" min="0" inputmode="numeric" autocomplete="off"></div>
         </div>
         <hr class="dv">
         <div class="ctitle" style="margin-bottom:8px">一時的な金額調整（期間指定）</div>

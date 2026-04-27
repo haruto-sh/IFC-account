@@ -267,9 +267,10 @@ async function loadAll() {
     S.pracCount[r[2]][r[1]|0] = r[3]|0;
   });
 
-  S.fee = { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] };
+  S.fee = { base:{ male:2000, female:2000, manager:1500, exec:500 }, maxExec:2500, adjs:[] };
   fsRows.forEach(r => {
     if (r[3]==='base') S.fee.base[r[1]] = r[2]|0;
+    else if (r[3]==='maxExec') S.fee.maxExec = r[2]|0;
     else S.fee.adjs.push({ id:r[0]|0, attr:r[1], amount:r[2]|0, from:r[4], to:r[5] });
   });
   if (fsRows.length === 0) await saveFeeSettings();
@@ -323,6 +324,7 @@ const saveFeeSettings = () => saveSheet(async () => {
   const rows = [];
   let rid = 1;
   Object.entries(S.fee.base).forEach(([attr,amt]) => rows.push([rid++,attr,amt,'base','','']));
+  rows.push([rid++,'exec',S.fee.maxExec,'maxExec','','']);
   S.fee.adjs.forEach(a => rows.push([a.id,a.attr,a.amount,'adj',a.from,a.to]));
   await sheetsWriteAll(SH.FEE_SET, rows);
 });
@@ -413,7 +415,11 @@ function calcBal() {
 
 function calcFee(attr, ym, pc) {
   const adj = S.fee.adjs.find(a => a.attr===attr && a.from<=ym && ym<=a.to);
-  if (attr==='exec') { const per=adj?adj.amount:S.fee.base.exec; return per*(pc||0); }
+  if (attr==='exec') {
+    const per = adj ? adj.amount : S.fee.base.exec;
+    const total = per * (pc||0);
+    return Math.min(total, S.fee.maxExec||2500);
+  }
   return adj ? adj.amount : (S.fee.base[attr]||0);
 }
 
@@ -864,7 +870,7 @@ function renderMembers() {
   const tb = document.getElementById('m-tbody');
   if (!tb) return;
   tb.innerHTML = ms.length===0
-    ? '<tr><td colspan="3" class="empty">部員がいません</td></tr>'
+    ? '<tr><td colspan="4" class="empty">部員がいません</td></tr>'
     : ms.map(m => `<tr>
         <td style="font-weight:500">${m.name}</td>
         <td style="color:var(--tx2)">${m.grade}</td>
@@ -919,6 +925,86 @@ async function deleteMember() {
   if (!confirm(`「${m?.name}」を削除しますか？`)) return;
   S.members = S.members.filter(m => m.id!==id);
   closeM('m-edit'); toast('削除しました');
+  render(); await saveMembers();
+}
+
+/* ===== BULK OPERATIONS ===== */
+function getSelectedMembers() {
+  const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+  return Array.from(checkboxes).map(cb => parseInt(cb.value));
+}
+
+function updateBulkButtons() {
+  const selected = getSelectedMembers();
+  const changeBtn = document.getElementById('bulk-change-btn');
+  const deleteBtn = document.getElementById('bulk-delete-btn');
+  if (changeBtn) changeBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
+  if (deleteBtn) deleteBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = checked);
+  updateBulkButtons();
+}
+
+async function bulkAddMembers() {
+  const text = document.getElementById('bulk-members-text').value.trim();
+  if (!text) { toast('入力してください'); return; }
+  const lines = text.split('\n').filter(l => l.trim());
+  let added = 0;
+  for (const line of lines) {
+    const [firstName, lastName, grade, attr] = line.split(',').map(s => s.trim());
+    if (!firstName || !lastName || !grade || !attr) {
+      toast(`形式が違う行があります: ${line}`);
+      return;
+    }
+    if (!['26','25','24','23','22','21'].includes(grade)) {
+      toast(`学年が不正です: ${grade}`);
+      return;
+    }
+    if (!['male','female','manager','exec'].includes(attr)) {
+      toast(`属性が不正です: ${attr}`);
+      return;
+    }
+    const name = `${firstName} ${lastName}`;
+    S.members.push({ id:nid++, name, grade, attr });
+    added++;
+  }
+  closeM('m-bulk-add');
+  document.getElementById('bulk-members-text').value = '';
+  toast(`${added}名追加しました ✓`);
+  render(); await saveMembers();
+}
+
+function bulkChangeAttr() {
+  const selected = getSelectedMembers();
+  if (selected.length === 0) { toast('部員を選択してください'); return; }
+  const preview = document.getElementById('bulk-change-preview');
+  const names = selected.map(id => S.members.find(m => m.id===id)?.name).join(', ');
+  preview.textContent = `選択中の部員: ${names}`;
+  openM('m-bulk-change-attr');
+}
+
+async function confirmBulkChangeAttr() {
+  const selected = getSelectedMembers();
+  const newAttr = document.getElementById('bulk-change-to-attr').value;
+  if (!newAttr) { toast('属性を選択してください'); return; }
+  selected.forEach(id => {
+    const m = S.members.find(m => m.id===id);
+    if (m) m.attr = newAttr;
+  });
+  closeM('m-bulk-change-attr');
+  toast(`${selected.length}名の属性を変更しました ✓`);
+  render(); await saveMembers();
+}
+
+async function bulkDelete() {
+  const selected = getSelectedMembers();
+  if (selected.length === 0) { toast('部員を選択してください'); return; }
+  const names = selected.map(id => S.members.find(m => m.id===id)?.name).join(', ');
+  if (!confirm(`以下の${selected.length}名を削除しますか？\n${names}`)) return;
+  S.members = S.members.filter(m => !selected.includes(m.id));
+  toast(`${selected.length}名削除しました`);
   render(); await saveMembers();
 }
 
@@ -1048,6 +1134,7 @@ function openFeeModal() {
   const b = S.fee.base;
   ['male','female','manager','exec'].forEach(k =>
     document.getElementById('fs-'+k).value = b[k]);
+  document.getElementById('fs-max-exec').value = S.fee.maxExec || 2500;
   renderAdjList(); openM('m-fee');
 }
 
@@ -1058,6 +1145,7 @@ async function saveFee() {
     manager: parseInt(document.getElementById('fs-manager').value) || 0,
     exec:    parseInt(document.getElementById('fs-exec').value)    || 0,
   };
+  S.fee.maxExec = parseInt(document.getElementById('fs-max-exec').value) || 2500;
   closeM('m-fee'); toast('部費設定を保存しました ✓');
   render(); await saveFeeSettings();
 }
