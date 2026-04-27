@@ -777,21 +777,26 @@ function renderCashLedger(acct, title) {
       else                { inAmt=t.amount;  bal+=t.amount; totalIn+=t.amount;  label=`振替入金←${t.acct==='cash'?'現金':'銀行'}`; }
     }
     rows += `<tr>
-      <td class="num">${t.date.replace(/-/g, '/')}</td><td>${label}</td>
+      <td class="num">${t.date.replace(/-/g, '/')}</td>
+      <td>${t.cat||'—'}</td>
+      <td>${label}</td>
       <td class="num" style="color:var(--grn)">${inAmt?fmtN(inAmt):''}</td>
       <td class="num" style="color:var(--red)">${outAmt?fmtN(outAmt):''}</td>
       <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
+      <td style="text-align:center"><button class="btn bs sm" onclick="openEditTx(${t.id})">編集</button></td>
+      <td style="text-align:center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
     </tr>`;
   });
   return `<div class="card" style="padding:0;overflow:hidden">
     <div style="padding:12px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">${title}</div>
     <div style="overflow-x:auto"><table class="ltbl">
-      <thead><tr><th>日付</th><th>摘要</th><th style="text-align:right">入金</th><th style="text-align:right">出金</th><th style="text-align:right">残高</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" class="empty">データがありません</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="2" style="font-weight:600">合計</td>
+      <thead><tr><th>日付</th><th>科目</th><th>摘要</th><th style="text-align:right">収入金額</th><th style="text-align:right">支出金額</th><th style="text-align:right">差引残高</th><th>編集</th><th>削除</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="empty">データがありません</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="3" style="font-weight:600">合計</td>
         <td class="num" style="color:var(--grn)">${fmtN(totalIn)}</td>
         <td class="num" style="color:var(--red)">${fmtN(totalOut)}</td>
         <td class="num">${fmtN(bal)}</td>
+        <td colspan="2"></td>
       </tr></tfoot>
     </table></div></div>`;
 }
@@ -1198,6 +1203,155 @@ async function delAdj(id) {
   S.fee.adjs = S.fee.adjs.filter(a => a.id!==id);
   renderAdjList(); renderFeeView(); renderFee();
   await saveFeeSettings();
+}
+
+/* ================================================================
+   CATEGORIES MANAGEMENT
+================================================================ */
+let currentCatType = 'income';
+let categoriesEdited = {};
+let currentCatEditIndex = -1;
+
+function openCategoryModal() {
+  currentCatType = 'income';
+  currentCatEditIndex = -1;
+  categoriesEdited = JSON.parse(JSON.stringify(S.categories));
+  document.getElementById('cat-type-income').classList.add('on');
+  document.getElementById('cat-type-expense').classList.remove('on');
+  renderCategoriesList();
+  openM('m-categories');
+}
+
+function switchCatType(type, element) {
+  currentCatType = type;
+  element.closest('.tog2').querySelectorAll('.tbtn').forEach(b => b.classList.remove('on'));
+  element.classList.add('on');
+  renderCategoriesList();
+}
+
+function renderCategoriesList() {
+  const cats = categoriesEdited.filter(c => c.type === currentCatType);
+  const grouped = {};
+  cats.forEach(c => {
+    if (!grouped[c.classification]) grouped[c.classification] = [];
+    grouped[c.classification].push(c);
+  });
+
+  const el = document.getElementById('categories-list');
+
+  // 編集中の場合
+  if (currentCatEditIndex >= 0) {
+    const editCat = categoriesEdited[currentCatEditIndex];
+    el.innerHTML = `
+      <div style="padding:12px;background:var(--sur2);border-radius:8px;border:2px solid var(--grn)">
+        <div style="font-weight:600;margin-bottom:12px;font-size:13px">科目を編集</div>
+        <div class="fg" style="margin-bottom:12px">
+          <div class="fi">
+            <label style="font-size:12px">科目分類</label>
+            <input type="text" id="edit-cat-cls" value="${editCat.classification}" style="font-size:14px;padding:10px 12px">
+          </div>
+          <div class="fi">
+            <label style="font-size:12px">科目名</label>
+            <input type="text" id="edit-cat-name" value="${editCat.category}" style="font-size:14px;padding:10px 12px">
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bs sm" style="flex:1" onclick="cancelEditCategory()">キャンセル</button>
+          <button class="btn bp sm" style="flex:1" onclick="saveEditCategory(${currentCatEditIndex})">保存</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = Object.keys(grouped).length === 0
+    ? '<div style="color:var(--tx3);font-size:12px">科目がありません</div>'
+    : Object.entries(grouped).map(([cls, items]) => `
+        <div style="margin-bottom:12px;padding:10px;background:var(--sur);border-radius:6px;border:1px solid var(--bdr)">
+          <div style="font-weight:600;margin-bottom:8px;font-size:12px;color:var(--tx2)">${cls}</div>
+          ${items.map((cat, idx) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--bg);border-radius:4px;margin-bottom:4px;font-size:12px">
+              <span>${cat.category}</span>
+              <div style="display:flex;gap:4px">
+                <button class="btn bs sm" style="padding:3px 8px;font-size:11px;min-height:28px" onclick="editCategory(${categoriesEdited.indexOf(cat)})">編集</button>
+                <button class="btn bd sm" style="padding:3px 8px;font-size:11px;min-height:28px" onclick="deleteCategoryByRef(${categoriesEdited.indexOf(cat)})">削除</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+}
+
+function addCategory() {
+  const cls = document.getElementById('cat-cls-input').value.trim();
+  const cat = document.getElementById('cat-name-input').value.trim();
+
+  if (!cls) { toast('科目分類を入力してください'); return; }
+  if (!cat) { toast('科目名を入力してください'); return; }
+
+  const maxOrder = Math.max(0, ...categoriesEdited.filter(c => c.type === currentCatType).map(c => c.order || 0));
+  categoriesEdited.push({
+    type: currentCatType,
+    classification: cls,
+    category: cat,
+    order: maxOrder + 1
+  });
+
+  document.getElementById('cat-cls-input').value = '';
+  document.getElementById('cat-name-input').value = '';
+  renderCategoriesList();
+  toast('科目を追加しました');
+}
+
+function deleteCategoryByRef(index) {
+  const cat = categoriesEdited[index];
+  if (!cat) return;
+  if (!confirm(`「${cat.classification}」の「${cat.category}」を削除しますか？`)) return;
+  categoriesEdited.splice(index, 1);
+  renderCategoriesList();
+  toast('科目を削除しました');
+}
+
+function editCategory(index) {
+  currentCatEditIndex = index;
+  renderCategoriesList();
+}
+
+function cancelEditCategory() {
+  currentCatEditIndex = -1;
+  renderCategoriesList();
+}
+
+function saveEditCategory(index) {
+  const newCls = document.getElementById('edit-cat-cls').value.trim();
+  const newCat = document.getElementById('edit-cat-name').value.trim();
+
+  if (!newCls) { toast('科目分類を入力してください'); return; }
+  if (!newCat) { toast('科目名を入力してください'); return; }
+
+  categoriesEdited[index].classification = newCls;
+  categoriesEdited[index].category = newCat;
+  currentCatEditIndex = -1;
+  renderCategoriesList();
+  toast('科目を更新しました');
+}
+
+async function saveCategories() {
+  try {
+    const rows = categoriesEdited.map(c => [c.type, c.classification, c.category, c.order || 0]);
+    await sheetsClear(SH.CATEGORIES + '!A2:D');
+    if (rows.length > 0) {
+      await sheetsAppend(SH.CATEGORIES + '!A2:D', rows);
+    }
+    S.categories = categoriesEdited;
+    initializeCategories();
+    render();
+    closeM('m-categories');
+    toast('科目設定を保存しました ✓');
+  } catch (e) {
+    console.error('科目設定の保存に失敗しました:', e);
+    toast('保存に失敗しました');
+  }
 }
 
 /* ================================================================

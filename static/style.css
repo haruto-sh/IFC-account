@@ -344,7 +344,7 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
 ================================================================ */
 .ltbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ltbl th { background: var(--sur2); padding: 8px 12px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
-.ltbl td { padding: 9px 12px; border-bottom: 1px solid var(--bdr); vertical-align: middle; }
+.ltbl td { padding: 9px 12px; border-bottom: 1px solid var(--bdr); vertical-align: middle; white-space: nowrap; }
 .ltbl tr:last-child td { border-bottom: none; }
 .ltbl tr:hover td { background: var(--sur2); }
 .ltbl .num     { font-family: 'DM Mono', monospace; text-align: left; }

@@ -73,6 +73,10 @@
             <span class="bnav-icon">💴</span>
             <span class="bnav-label">部費</span>
           </button>
+          <button class="bnav-btn" onclick="showPage('categories')">
+            <span class="bnav-icon">🏷️</span>
+            <span class="bnav-label">科目</span>
+          </button>
           <button class="bnav-btn" onclick="showPage('report')">
             <span class="bnav-icon">📊</span>
             <span class="bnav-label">レポート</span>
@@ -399,6 +403,15 @@
           <div id="exec-unpaid-wrap"></div>
         </div>
 
+        <!-- ===== Categories ===== -->
+        <div class="page" id="page-categories">
+          <div class="sh">
+            <div class="st">科目管理</div>
+            <button class="btn bp sm" onclick="openCategoryModal()">⚙ 科目を編集</button>
+          </div>
+          <div id="categories-page-content"></div>
+        </div>
+
         <!-- ===== Report ===== -->
         <div class="page" id="page-report">
           <div class="st" style="margin-bottom:16px">収支レポート</div>
@@ -635,6 +648,45 @@
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-fee')">キャンセル</button>
           <button class="btn bp" onclick="saveFee()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 科目管理 -->
+    <div class="mbg" id="m-categories">
+      <div class="modal" style="max-width:600px">
+        <div class="modal-title">科目設定</div>
+        <div style="margin-bottom:16px">
+          <label style="font-weight:500;display:block;margin-bottom:8px">種別</label>
+          <div class="tog2">
+            <button class="tbtn income on" id="cat-type-income" onclick="switchCatType('income',this)">収入</button>
+            <button class="tbtn expense" id="cat-type-expense" onclick="switchCatType('expense',this)">支出</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-weight:500;margin-bottom:8px">科目一覧</div>
+          <div id="categories-list" style="background:var(--sur2);border-radius:8px;padding:12px;max-height:300px;overflow-y:auto"></div>
+        </div>
+
+        <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border-radius:8px">
+          <div style="font-weight:500;margin-bottom:12px">新規追加</div>
+          <div class="fg" style="margin-bottom:12px">
+            <div class="fi">
+              <label for="cat-cls-input" style="font-size:12px">科目分類</label>
+              <input type="text" id="cat-cls-input" placeholder="例：給与" style="font-size:14px;padding:10px 12px">
+            </div>
+            <div class="fi">
+              <label for="cat-name-input" style="font-size:12px">科目名</label>
+              <input type="text" id="cat-name-input" placeholder="例：給与入金" style="font-size:14px;padding:10px 12px">
+            </div>
+          </div>
+          <button class="btn bp sm" style="width:100%" onclick="addCategory()">追加</button>
+        </div>
+
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-categories')">閉じる</button>
+          <button class="btn bp" onclick="saveCategories()">保存</button>
         </div>
       </div>
     </div>
