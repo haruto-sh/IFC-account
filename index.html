@@ -118,8 +118,8 @@
           <div class="tx-pc-layout">
             <div class="card">
               <div class="ctitle">取引を追加</div>
-              <fieldset style="border:none;padding:0;margin-bottom:12px">
-                <legend style="margin-bottom:4px;font-size:0.9em">種別</legend>
+              <fieldset class="fieldset-reset mb-12">
+                <legend class="mb-4" style="font-size:0.9em">種別</legend>
                 <div class="tog3">
                   <button class="tbtn income on" id="t-income"   onclick="setType('income')">収入</button>
                   <button class="tbtn expense"   id="t-expense"  onclick="setType('expense')">支出</button>
@@ -127,8 +127,8 @@
                 </div>
               </fieldset>
               <div id="normal-fields">
-                <fieldset style="border:none;padding:0;margin-bottom:12px">
-                  <legend style="margin-bottom:4px;font-size:0.9em">口座</legend>
+                <fieldset class="fieldset-reset mb-12">
+                  <legend class="mb-4" style="font-size:0.9em">口座</legend>
                   <div class="tog2">
                     <button class="tbtn cash on" id="a-cash" onclick="setAcct('cash')">現金</button>
                     <button class="tbtn bank"    id="a-bank" onclick="setAcct('bank')">銀行預金</button>
@@ -454,16 +454,16 @@
 
         <!-- 通常取引フィールド -->
         <div id="etx-normal">
-          <fieldset style="border:none;padding:0;margin-bottom:12px">
-            <legend style="margin-bottom:6px;font-size:0.9em">種別</legend>
-            <div class="tog2" style="margin-bottom:12px">
+          <fieldset class="fieldset-reset mb-12">
+            <legend class="mb-6" style="font-size:0.9em">種別</legend>
+            <div class="tog2 mb-12">
               <button class="tbtn income" id="etx-t-income"  onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">収入</button>
               <button class="tbtn expense" id="etx-t-expense" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">支出</button>
             </div>
           </fieldset>
-          <fieldset style="border:none;padding:0;margin-bottom:12px">
-            <legend style="margin-bottom:6px;font-size:0.9em">口座</legend>
-            <div class="tog2" style="margin-bottom:12px">
+          <fieldset class="fieldset-reset mb-12">
+            <legend class="mb-6" style="font-size:0.9em">口座</legend>
+            <div class="tog2 mb-12">
               <button class="tbtn cash" id="etx-a-cash" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">現金</button>
               <button class="tbtn bank" id="etx-a-bank" onclick="this.closest('.tog2').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on')">銀行預金</button>
             </div>
@@ -617,8 +617,8 @@
     <div class="mbg" id="m-fee">
       <div class="modal">
         <div class="modal-title">部費設定</div>
-        <div class="ctitle" style="margin-bottom:8px">属性別の基本月額</div>
-        <div class="fg" style="margin-bottom:16px">
+        <div class="ctitle mb-8">属性別の基本月額</div>
+        <div class="fg mb-16">
           <div class="fi"><label for="fs-male"><span class="bdg male">男プレ</span> 月額</label><input type="number" id="fs-male" name="fee-male" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-female"><span class="bdg female">女プレ</span> 月額</label><input type="number" id="fs-female" name="fee-female" min="0" inputmode="numeric" autocomplete="off"></div>
           <div class="fi"><label for="fs-manager"><span class="bdg manager">マネージャー</span> 月額</label><input type="number" id="fs-manager" name="fee-manager" min="0" inputmode="numeric" autocomplete="off"></div>
@@ -626,10 +626,10 @@
           <div class="fi"><label for="fs-max-exec"><span class="bdg exec">幹部上</span> 最大月額</label><input type="number" id="fs-max-exec" name="fee-max-exec" min="0" inputmode="numeric" autocomplete="off"></div>
         </div>
         <hr class="dv">
-        <div class="ctitle" style="margin-bottom:8px">一時的な金額調整（期間指定）</div>
+        <div class="ctitle mb-8">一時的な金額調整（期間指定）</div>
         <div id="adj-list" style="margin-bottom:10px"></div>
         <div style="background:var(--sur2);border-radius:8px;padding:12px">
-          <div class="fg" style="margin-bottom:8px">
+          <div class="fg mb-8">
             <div class="fi">
               <label for="adj-attr">属性</label>
               <select id="adj-attr" name="adjustment-attr" autocomplete="off">
@@ -656,23 +656,23 @@
     <div class="mbg" id="m-categories">
       <div class="modal" style="max-width:600px">
         <div class="modal-title">科目設定</div>
-        <div style="margin-bottom:16px">
-          <label style="font-weight:500;display:block;margin-bottom:8px">種別</label>
+        <div class="mb-16">
+          <label class="font-semibold" style="display:block;margin-bottom:8px">種別</label>
           <div class="tog2">
             <button class="tbtn income on" id="cat-type-income" onclick="switchCatType('income',this)">収入</button>
             <button class="tbtn expense" id="cat-type-expense" onclick="switchCatType('expense',this)">支出</button>
           </div>
         </div>
 
-        <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border-radius:8px">
-          <div style="font-weight:500;margin-bottom:12px">新規追加</div>
-          <div class="fg" style="margin-bottom:12px">
+        <div class="mb-16" style="padding:12px;background:var(--sur2);border-radius:8px">
+          <div class="font-semibold mb-12">新規追加</div>
+          <div class="fg mb-12">
             <div class="fi">
-              <label for="cat-cls-input" style="font-size:12px">科目分類</label>
+              <label for="cat-cls-input" class="text-sm">科目分類</label>
               <input type="text" id="cat-cls-input" placeholder="例：給与" style="font-size:14px;padding:10px 12px">
             </div>
             <div class="fi">
-              <label for="cat-name-input" style="font-size:12px">科目名</label>
+              <label for="cat-name-input" class="text-sm">科目名</label>
               <input type="text" id="cat-name-input" placeholder="例：給与入金" style="font-size:14px;padding:10px 12px">
             </div>
           </div>

@@ -23,10 +23,27 @@ const ATTR_ORDER = { male:0, female:1, manager:2, exec:3 };
 const GRADE_ORDER= { 26:0,25:1,24:2,23:3,22:4,21:5 };
 
 /* ================================================================
+   UTILITY FUNCTIONS - CSS Helper Functions
+================================================================ */
+function getAmountClass(value, type = 'amount') {
+  if (type === 'income-expense') {
+    return value === 'income' ? 'text-income' : 'text-expense';
+  } else if (type === 'positive-negative') {
+    return value >= 0 ? 'text-income' : 'text-expense';
+  }
+  return '';
+}
+
+function getPaidStatusClasses(isPaid) {
+  return isPaid ? 'bg-paid text-paid' : 'bg-unpaid text-unpaid';
+}
+
+/* ================================================================
    AUTH STATE
 ================================================================ */
 let accessToken = null;
 let userEmail   = null;
+
 
 /* ================================================================
    APP STATE
@@ -199,8 +216,11 @@ async function sheetsClear(sheetName) {
 }
 
 async function sheetsWriteAll(sheetName, rows) {
-  await sheetsClear(sheetName);
-  if (rows.length > 0) await sheetsAppend(sheetName, rows);
+  if (rows.length === 0) {
+    await sheetsClear(sheetName);
+  } else {
+    await sheetsUpdate(`${sheetName}!A2:Z`, [rows].flat().length > 0 ? rows : [[]]);
+  }
 }
 
 async function sheetsUpdate(range, values) {
@@ -478,25 +498,25 @@ function renderDash() {
   });
 
   document.getElementById('dash-sg').innerHTML = `
-    <div class="sc"><div class="lb"><span class="dot" style="background:var(--csh)"></span>現金残高</div><div class="vl" style="color:var(--csh)">${fmt(cash)}</div></div>
+    <div class="sc"><div class="lb"><span class="dot" style="background:var(--csh)"></span>現金残高</div><div class="vl text-income">${fmt(cash)}</div></div>
     <div class="sc"><div class="lb"><span class="dot" style="background:var(--bnk)"></span>銀行残高</div><div class="vl" style="color:var(--bnk)">${fmt(bank)}</div></div>
-    <div class="sc"><div class="lb">今月収入</div><div class="vl" style="color:var(--grn)">${fmt(inc)}</div></div>
-    <div class="sc"><div class="lb">今月支出</div><div class="vl" style="color:var(--red)">${fmt(exp)}</div></div>`;
+    <div class="sc"><div class="lb">今月収入</div><div class="vl text-income">${fmt(inc)}</div></div>
+    <div class="sc"><div class="lb">今月支出</div><div class="vl text-expense">${fmt(exp)}</div></div>`;
 
   document.getElementById('acct-bd').innerHTML = `
     <div>
-      <div style="font-size:12px;font-weight:500;color:var(--csh);margin-bottom:7px;display:flex;align-items:center;gap:5px">
+      <div class="text-sm font-semibold mb-7 flex flex-gap-5" style="color:var(--csh);align-items:center">
         <span style="width:7px;height:7px;border-radius:50%;background:var(--csh);display:inline-block"></span>現金
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--tx2)">収入</span><span style="color:var(--grn);font-family:'DM Mono',monospace">${fmt(ci)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span style="color:var(--tx2)">支出</span><span style="color:var(--red);font-family:'DM Mono',monospace">${fmt(co)}</span></div>
+      <div class="flex flex-between text-sm p-4-0" style="border-bottom:1px solid var(--bdr)"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(ci)}</span></div>
+      <div class="flex flex-between text-sm p-4-0"><span class="text-secondary-color">支出</span><span class="text-expense number-mono">${fmt(co)}</span></div>
     </div>
     <div>
-      <div style="font-size:12px;font-weight:500;color:var(--bnk);margin-bottom:7px;display:flex;align-items:center;gap:5px">
+      <div class="text-sm font-semibold mb-7 flex flex-gap-5" style="color:var(--bnk);align-items:center">
         <span style="width:7px;height:7px;border-radius:50%;background:var(--bnk);display:inline-block"></span>銀行預金
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--tx2)">収入</span><span style="color:var(--grn);font-family:'DM Mono',monospace">${fmt(bi)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span style="color:var(--tx2)">支出</span><span style="color:var(--red);font-family:'DM Mono',monospace">${fmt(bo)}</span></div>
+      <div class="flex flex-between text-sm p-4-0" style="border-bottom:1px solid var(--bdr)"><span class="text-secondary-color">収入</span><span class="text-income number-mono">${fmt(bi)}</span></div>
+      <div class="flex flex-between text-sm p-4-0"><span class="text-secondary-color">支出</span><span class="text-expense number-mono">${fmt(bo)}</span></div>
     </div>`;
 
   const fym = document.getElementById('fee-month')?.value || ym;
@@ -545,8 +565,8 @@ function txRow(t) {
     <div class="txr-row2">
       <span class="txdesc">${t.desc}</span>
       <span class="txamt ${amtCls}">${amtStr}</span>
-      <button class="btn bs sm" onclick="openEditTx(${t.id})" style="padding:4px 10px;font-size:11px;min-height:28px;flex-shrink:0">編集</button>
-      <button class="btn bd sm" onclick="delTx(${t.id})"     style="padding:4px 10px;font-size:11px;min-height:28px;flex-shrink:0">削除</button>
+      <button class="btn bs sm btn-sm-custom flex-shrink" onclick="openEditTx(${t.id})">編集</button>
+      <button class="btn bd sm btn-sm-custom flex-shrink" onclick="delTx(${t.id})">削除</button>
     </div>
   </div>`;
 }
@@ -796,21 +816,21 @@ function renderCashLedger(acct, title) {
       <td class="num">${t.date.replace(/-/g, '/')}</td>
       <td>${t.cat||'—'}</td>
       <td>${label}</td>
-      <td class="num" style="color:var(--grn)">${inAmt?fmtN(inAmt):''}</td>
-      <td class="num" style="color:var(--red)">${outAmt?fmtN(outAmt):''}</td>
+      <td class="num text-income">${inAmt?fmtN(inAmt):''}</td>
+      <td class="num text-expense">${outAmt?fmtN(outAmt):''}</td>
       <td class="num ${bal>=0?'bal-pos':'bal-neg'}">${fmtN(bal)}</td>
-      <td style="text-align:center"><button class="btn bs sm" onclick="openEditTx(${t.id})">編集</button></td>
-      <td style="text-align:center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
+      <td class="text-center"><button class="btn bs sm" onclick="openEditTx(${t.id})">編集</button></td>
+      <td class="text-center"><button class="btn bd sm" onclick="if(confirm('削除しますか？'))delTx(${t.id})">削除</button></td>
     </tr>`;
   });
   return `<div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:12px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">${title}</div>
+    <div class="card-header">${title}</div>
     <div style="overflow-x:auto"><table class="ltbl">
-      <thead><tr><th>日付</th><th>科目</th><th>摘要</th><th style="text-align:right">収入金額</th><th style="text-align:right">支出金額</th><th style="text-align:right">差引残高</th><th>編集</th><th>削除</th></tr></thead>
+      <thead><tr><th>日付</th><th>科目</th><th>摘要</th><th class="text-right">収入金額</th><th class="text-right">支出金額</th><th class="text-right">差引残高</th><th>編集</th><th>削除</th></tr></thead>
       <tbody>${rows||'<tr><td colspan="8" class="empty">データがありません</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="3" style="font-weight:600">合計</td>
-        <td class="num" style="color:var(--grn)">${fmtN(totalIn)}</td>
-        <td class="num" style="color:var(--red)">${fmtN(totalOut)}</td>
+      <tfoot><tr><td colspan="3" class="font-bold">合計</td>
+        <td class="num text-income">${fmtN(totalIn)}</td>
+        <td class="num text-expense">${fmtN(totalOut)}</td>
         <td class="num">${fmtN(bal)}</td>
         <td colspan="2"></td>
       </tr></tfoot>
@@ -832,18 +852,18 @@ function renderCatLedger() {
       total += amt;
       rows += `<tr>
         <td class="num">${t.date.replace(/-/g, '/')}</td><td>${t.desc}</td>
-        <td class="num" style="font-size:11px;color:var(--tx2)">${t.classification} > ${t.cat}</td>
+        <td class="num text-secondary">${t.classification} > ${t.cat}</td>
         <td><span class="bdg ${t.acct}">${t.acct==='cash'?'現金':'銀行'}</span></td>
-        <td class="num" style="color:${t.type==='income'?'var(--grn)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
+        <td class="num ${t.type==='income'?'text-income':'text-expense'}">${t.type==='income'?'+':'-'}${fmtN(t.amount)}</td>
       </tr>`;
     });
-    html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px">
-      <div style="padding:10px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between">
+    html += `<div class="card mb-10" style="padding:0;overflow:hidden">
+      <div class="flex flex-between" style="padding:10px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">
         <span>${cls}</span>
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:${total>=0?'var(--grn)':'var(--red)'}">${total>=0?'+':''}${fmtN(total)}</span>
+        <span class="number-mono ${total>=0?'text-income':'text-expense'}">${total>=0?'+':''}${fmtN(total)}</span>
       </div>
       <div style="overflow-x:auto"><table class="ltbl">
-        <thead><tr><th>日付</th><th>摘要</th><th style="text-align:center">科目</th><th>口座</th><th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th><th>摘要</th><th class="text-center">科目</th><th>口座</th><th class="text-right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div></div>`;
   });
@@ -858,20 +878,20 @@ function renderSummaryStatement() {
     else                    { catExp[t.cat]=(catExp[t.cat]||0)+t.amount; expTotal+=t.amount; }
   });
   const incRows = Object.keys(catInc).sort().map(c =>
-    `<tr><td style="padding-left:24px">${c}</td><td class="num" style="color:var(--grn)">${fmtN(catInc[c])}</td></tr>`).join('');
+    `<tr><td style="padding-left:24px">${c}</td><td class="num text-income">${fmtN(catInc[c])}</td></tr>`).join('');
   const expRows = Object.keys(catExp).sort().map(c =>
-    `<tr><td style="padding-left:24px">${c}</td><td class="num" style="color:var(--red)">${fmtN(catExp[c])}</td></tr>`).join('');
+    `<tr><td style="padding-left:24px">${c}</td><td class="num text-expense">${fmtN(catExp[c])}</td></tr>`).join('');
   const net = incTotal - expTotal;
   return `<div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:12px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--bdr)">収支計算書（全期間）</div>
+    <div class="card-header">収支計算書（全期間）</div>
     <div style="overflow-x:auto"><table class="ltbl"><tbody>
-      <tr><td style="font-weight:600;background:var(--grn-l);color:var(--grn);padding:8px 14px">【収入の部】</td><td class="num" style="background:var(--grn-l);color:var(--grn);font-weight:600">${fmtN(incTotal)}</td></tr>
+      <tr><td class="font-bold bg-income" style="padding:8px 14px">【収入の部】</td><td class="num font-bold bg-income">${fmtN(incTotal)}</td></tr>
       ${incRows}
-      <tr><td style="font-weight:600;background:var(--red-l);color:var(--red);padding:8px 14px">【支出の部】</td><td class="num" style="background:var(--red-l);color:var(--red);font-weight:600">${fmtN(expTotal)}</td></tr>
+      <tr><td class="font-bold bg-expense" style="padding:8px 14px">【支出の部】</td><td class="num font-bold bg-expense">${fmtN(expTotal)}</td></tr>
       ${expRows}
       <tr style="border-top:2px solid var(--bdr)">
-        <td style="font-weight:700;font-size:15px;padding:12px 14px">当期収支差額</td>
-        <td class="num" style="font-weight:700;font-size:15px;color:${net>=0?'var(--grn)':'var(--red)'}">${net>=0?'+':''}${fmtN(net)}</td>
+        <td class="font-bold" style="font-size:15px;padding:12px 14px">当期収支差額</td>
+        <td class="num font-bold ${net>=0?'text-income':'text-expense'}" style="font-size:15px">${net>=0?'+':''}${fmtN(net)}</td>
       </tr>
     </tbody></table></div></div>`;
 }
@@ -893,11 +913,11 @@ function renderMembers() {
   tb.innerHTML = ms.length===0
     ? '<tr><td colspan="5" class="empty">部員がいません</td></tr>'
     : ms.map(m => `<tr class="member-row" id="member-row-${m.id}">
-        <td style="text-align:center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
-        <td style="text-align:center;color:var(--tx2)">${m.grade}</td>
-        <td style="font-weight:500">${m.name}</td>
-        <td style="text-align:center">${attrBadge(m.attr)}</td>
-        <td style="text-align:center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
+        <td class="text-center"><input type="checkbox" class="member-checkbox" value="${m.id}" onchange="updateMemberRowStyle(${m.id}); updateBulkButtons()"></td>
+        <td class="text-center text-secondary-color">${m.grade}</td>
+        <td class="font-semibold">${m.name}</td>
+        <td class="text-center">${attrBadge(m.attr)}</td>
+        <td class="text-center"><button class="btn bs sm" onclick="openEdit(${m.id})">編集</button></td>
       </tr>`).join('');
   updateBulkButtons();
 }
@@ -922,7 +942,15 @@ async function addMember() {
   if (!firstName) { toast('姓を入力してください'); return; }
   if (!lastName)  { toast('名を入力してください'); return; }
   const name = `${firstName} ${lastName}`;
-  S.members.push({ id:nid++, name, grade, attr });
+  const newMemberId = nid++;
+  S.members.push({ id:newMemberId, name, grade, attr });
+
+  if (attr === 'exec') {
+    Object.keys(S.feeRec).forEach(ym => {
+      S.feeRec[ym][newMemberId] = false;
+    });
+  }
+
   document.getElementById('ma-first-name').value = '';
   document.getElementById('ma-last-name').value = '';
   closeM('m-add'); toast('追加しました ✓');
@@ -991,6 +1019,7 @@ async function bulkAddMembers() {
   if (!text) { toast('入力してください'); return; }
   const lines = text.split('\n').filter(l => l.trim());
   let added = 0;
+  const newExecIds = [];
   for (const line of lines) {
     const [firstName, lastName, grade, attr] = line.split(',').map(s => s.trim());
     if (!firstName || !lastName || !grade || !attr) {
@@ -1006,9 +1035,18 @@ async function bulkAddMembers() {
       return;
     }
     const name = `${firstName} ${lastName}`;
-    S.members.push({ id:nid++, name, grade, attr });
+    const newMemberId = nid++;
+    S.members.push({ id:newMemberId, name, grade, attr });
+    if (attr === 'exec') newExecIds.push(newMemberId);
     added++;
   }
+
+  newExecIds.forEach(memberId => {
+    Object.keys(S.feeRec).forEach(ym => {
+      S.feeRec[ym][memberId] = false;
+    });
+  });
+
   closeM('m-bulk-add');
   document.getElementById('bulk-members-text').value = '';
   toast(`${added}名追加しました ✓`);
@@ -1052,7 +1090,12 @@ async function bulkDelete() {
 ================================================================ */
 function renderFee() {
   const ym = document.getElementById('fee-month')?.value; if (!ym) return;
-  if (!S.feeRec[ym])    S.feeRec[ym]    = {};
+  if (!S.feeRec[ym]) {
+    S.feeRec[ym] = {};
+    S.members.forEach(m => {
+      S.feeRec[ym][m.id] = false;
+    });
+  }
   if (!S.pracCount[ym]) S.pracCount[ym] = {};
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
@@ -1071,17 +1114,17 @@ function renderFee() {
     const fee    = calcFee(m.attr, ym, pc[m.id]||0);
     const pi = m.attr==='exec'
       ? `<input type="number" id="prac-${m.id}-${ym.replace('-','_')}" name="practice-count" min="0" max="31" value="${pc[m.id]||0}"
-           style="width:62px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
+           style="width:40px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
            autocomplete="off"
            onchange="setPrac(${m.id},'${ym}',this.value)">`
-      : `<span style="color:var(--tx3);font-size:12px">—</span>`;
+      : `<span class="text-tertiary text-sm text-center">—</span>`;
     return `<tr>
-      <td style="font-weight:500">${m.name}<br><span style="font-size:11px;color:var(--tx3)">${m.grade}</span></td>
+      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
       <td>${attrBadge(m.attr)}</td>
       <td>${pi}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:500">${fmt(fee)}</td>
-      <td style="text-align:center">
-        <button class="btn sm" style="background:${isPaid?'var(--grn-l)':'var(--red-l)'};color:${isPaid?'var(--grn)':'var(--red)'};min-width:68px"
+      <td class="text-right amount-text">${fmt(fee)}</td>
+      <td class="text-center">
+        <button class="btn sm ${getPaidStatusClasses(isPaid)} btn-min-width"
           onclick="toggleFee(${m.id},'${ym}')">${isPaid?'✓ 済み':'✕ 未納'}</button>
       </td>
     </tr>`;
@@ -1092,6 +1135,14 @@ function renderFee() {
 async function setPrac(id, ym, v) {
   if (!S.pracCount[ym]) S.pracCount[ym] = {};
   S.pracCount[ym][id] = parseInt(v)||0;
+
+  if (!S.feeRec[ym]) {
+    S.feeRec[ym] = {};
+    sortedMembers().forEach(m => {
+      S.feeRec[ym][m.id] = false;
+    });
+  }
+
   renderFee(); await savePrac();
 }
 
@@ -1113,7 +1164,8 @@ function renderExecUnpaid() {
     months.forEach(ym => {
       if (S.feeRec[ym]?.[m.id]===false) {
         const pc  = (S.pracCount[ym]||{})[m.id]||0;
-        unpaid[ym] = calcFee('exec', ym, pc);
+        const fee = calcFee('exec', ym, pc);
+        if (fee > 0) unpaid[ym] = fee;
       }
     });
     if (Object.keys(unpaid).length>0) data[m.id] = unpaid;
@@ -1126,16 +1178,16 @@ function renderExecUnpaid() {
   }
 
   const cols = [...new Set(active.flatMap(m => Object.keys(data[m.id])))].sort();
-  const thead = `<tr><th>氏名</th>${cols.map(ym=>`<th>${ym}</th>`).join('')}<th>合計</th></tr>`;
+  const thead = `<tr><th>学年</th>${cols.map(ym=>`<th>${ym}</th>`).join('')}<th>合計</th></tr>`;
   const tbody = active.map(m => {
     let total=0;
     const cells = cols.map(ym => {
       const fee = data[m.id]?.[ym];
       if (fee!==undefined&&fee>0) { total+=fee; return `<td>${fmtN(fee)}</td>`; }
-      return `<td style="color:var(--tx3)">—</td>`;
+      return `<td class="text-tertiary">—</td>`;
     }).join('');
     return `<tr>
-      <td>${m.name}<br><span style="font-size:11px;color:var(--tx3)">${m.grade}</span></td>
+      <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
       ${cells}
       <td class="total-col">${fmtN(total)}</td>
     </tr>`;
@@ -1388,14 +1440,14 @@ function renderReport() {
   if (mel) mel.innerHTML = ms.length===0 ? '<div class="empty">データがありません</div>'
     : ms.map(ym => {
         const d=monthly[ym], bal=d.inc-d.exp;
-        return `<div style="padding:7px 0;border-bottom:1px solid var(--bdr)">
-          <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-            <span style="font-family:'DM Mono',monospace;font-size:12px">${ym}</span>
-            <span style="font-size:13px;font-weight:500;color:${bal>=0?'var(--grn)':'var(--red)'}">${bal>=0?'+':''}${fmt(bal)}</span>
+        return `<div class="p-7-bdr">
+          <div class="flex flex-between mb-2">
+            <span class="text-sm-mono">${ym}</span>
+            <span class="text-sm font-semibold ${bal>=0?'text-income':'text-expense'}">${bal>=0?'+':''}${fmt(bal)}</span>
           </div>
-          <div style="font-size:11px;color:var(--tx2)">
-            現金 <span style="color:var(--grn)">${fmt(d.ci)}</span>/<span style="color:var(--red)">${fmt(d.co)}</span>
-            銀行 <span style="color:var(--grn)">${fmt(d.bi)}</span>/<span style="color:var(--red)">${fmt(d.bo)}</span>
+          <div class="text-xs text-secondary-color">
+            現金 <span class="text-income">${fmt(d.ci)}</span>/<span class="text-expense">${fmt(d.co)}</span>
+            銀行 <span class="text-income">${fmt(d.bi)}</span>/<span class="text-expense">${fmt(d.bo)}</span>
           </div></div>`;
       }).join('');
 
@@ -1409,11 +1461,11 @@ function renderReport() {
   if (cel) cel.innerHTML = Object.keys(clss).sort().length===0 ? '<div class="empty">データがありません</div>'
     : Object.keys(clss).sort().map(k => {
         const d=clss[k];
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bdr)">
-          <span style="font-size:12px;background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span>
-          <span style="font-size:13px">
-            ${d.inc?`<span style="color:var(--grn)">${fmt(d.inc)}</span> `:''}
-            ${d.exp?`<span style="color:var(--red)">-${fmt(d.exp)}</span>`:''}
+        return `<div class="flex flex-center flex-between p-7-bdr">
+          <span class="text-sm" style="background:var(--sur2);padding:2px 8px;border-radius:20px">${k}</span>
+          <span class="text-sm">
+            ${d.inc?`<span class="text-income">${fmt(d.inc)}</span> `:''}
+            ${d.exp?`<span class="text-expense">-${fmt(d.exp)}</span>`:''}
           </span>
         </div>`;
       }).join('');
@@ -1428,19 +1480,19 @@ function renderTrendTable(monthly) {
   let cum=0;
   el.innerHTML = `<thead><tr>
     <th>月</th>
-    <th style="text-align:right">収入</th>
-    <th style="text-align:right">支出</th>
-    <th style="text-align:right">差引</th>
-    <th style="text-align:right">累計残高</th>
+    <th class="text-right">収入</th>
+    <th class="text-right">支出</th>
+    <th class="text-right">差引</th>
+    <th class="text-right">累計残高</th>
   </tr></thead><tbody>${
     ms.map(ym => {
       const d=monthly[ym], bal=d.inc-d.exp; cum+=bal;
       return `<tr>
-        <td style="font-family:'DM Mono',monospace;font-size:12px">${ym}</td>
-        <td class="num" style="color:var(--grn)">${fmtN(d.inc)}</td>
-        <td class="num" style="color:var(--red)">${fmtN(d.exp)}</td>
-        <td class="num" style="color:${bal>=0?'var(--grn)':'var(--red)'};font-weight:500">${bal>=0?'+':''}${fmtN(bal)}</td>
-        <td class="num" style="font-weight:600">${fmtN(cum)}</td>
+        <td class="text-sm-mono">${ym}</td>
+        <td class="num text-income">${fmtN(d.inc)}</td>
+        <td class="num text-expense">${fmtN(d.exp)}</td>
+        <td class="num font-semibold ${bal>=0?'text-income':'text-expense'}">${bal>=0?'+':''}${fmtN(bal)}</td>
+        <td class="num font-bold">${fmtN(cum)}</td>
       </tr>`;
     }).join('')
   }</tbody>`;
