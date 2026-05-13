@@ -356,10 +356,13 @@ textarea { resize: vertical; min-height: 52px; font-size: 16px; }
    MEMBER TABLE
 ================================================================ */
 .mtbl { width: 100%; border-collapse: collapse; }
-.mtbl th { background: var(--sur2); padding: 10px 12px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
-.mtbl td { padding: 10px 12px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; white-space: nowrap; }
+.mtbl th { background: var(--sur2); padding: 8px 10px; text-align: left; font-size: 11px; color: var(--tx3); font-weight: 500; border-bottom: 1px solid var(--bdr); white-space: nowrap; }
+.mtbl td { padding: 8px 10px; border-bottom: 1px solid var(--bdr); font-size: 13px; vertical-align: middle; white-space: nowrap; }
 .mtbl tr:last-child td { border-bottom: none; }
 .mtbl tr:hover td { background: var(--sur2); }
+.mtbl tr.member-row-selected td { background: var(--grn-l); color: var(--tx); font-weight: 600; }
+.mtbl tr.member-row-selected td.text-secondary-color { color: var(--tx); }
+.mtbl tr.member-row-selected td.text-center { color: var(--tx); }
 
 /* チェックボックスの垂直中央揃え */
 #select-all-members,
@@ -872,7 +875,7 @@ select.bs-input {
 ================================================================ */
 .text-secondary { font-size: 13px; color: var(--tx2); }
 .text-tertiary { font-size: 11px; color: var(--tx3); }
-.text-amount { font-size: 14px; color: var(--tx); font-weight: 500; }
+.text-amount { font-size: 13px; color: var(--tx); font-weight: 500; }
 .text-sm { font-size: 12px; }
 .text-xs { font-size: 11px; }
 .text-caption { font-size: 10px; }
@@ -943,7 +946,6 @@ select.bs-input {
 ================================================================ */
 .btn-xs { padding: 3px 8px; font-size: 11px; min-height: 28px; }
 .btn-sm-custom { padding: 4px 10px; font-size: 11px; min-height: 28px; }
-.btn-min-width { min-width: 68px; }
 
 @media (max-width: 767px) {
   .cat-page-grid {

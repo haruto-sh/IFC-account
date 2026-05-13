@@ -379,23 +379,65 @@
           </div>
 
           <div class="fsrow">
-            <div class="fstat"><div class="fn" id="fp-c" style="color:var(--grn)">0</div><div class="fl">納入済み</div></div>
-            <div class="fstat"><div class="fn" id="fu-c" style="color:var(--red)">0</div><div class="fl">未納</div></div>
-            <div class="fstat"><div class="fn" id="fc-a" style="color:var(--grn)">¥0</div><div class="fl">回収済み</div></div>
-            <div class="fstat"><div class="fn" id="fr-a" style="color:var(--tx2)">¥0</div><div class="fl">未回収</div></div>
+            <div class="fstat">
+              <div class="fn" id="fp-c" style="color:var(--grn)">0</div>
+              <div class="fl">納入済み</div>
+            </div>
+            <div class="fstat">
+              <div class="fn" id="fu-c" style="color:var(--red)">0</div>
+              <div class="fl">未納</div>
+            </div>
+            <div class="fstat">
+              <div class="fn" id="fc-a" style="color:var(--grn)">¥0</div>
+              <div class="fl">回収済み</div>
+            </div>
+            <div class="fstat">
+              <div class="fn" id="fr-a" style="color:var(--tx2)">¥0</div>
+              <div class="fl">未回収</div>
+            </div>
           </div>
 
-          <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
-            <table class="mtbl">
-              <thead>
-                <tr>
-                  <th>氏名</th><th>属性</th><th>参加回数</th>
-                  <th style="text-align:right">今月の部費</th>
-                  <th style="text-align:center">納入状況</th>
-                </tr>
-              </thead>
-              <tbody id="fee-tbody"></tbody>
-            </table>
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+            <select id="fee-f-attr" name="fee-filter-attr" onchange="renderFee()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+              <option value="">すべての属性</option>
+              <option value="male">男プレ</option>
+              <option value="female">女プレ</option>
+              <option value="manager">マネージャー</option>
+              <option value="exec">幹部上</option>
+            </select>
+            <select id="fee-f-grade" name="fee-filter-grade" onchange="renderFee()" style="flex:1;font-size:12px;padding:5px 10px" autocomplete="off">
+              <option value="">すべての学年</option>
+              <option value="26">26</option>
+              <option value="25">25</option>
+              <option value="24">24</option>
+              <option value="23">23</option>
+              <option value="22">22</option>
+              <option value="21">21</option>
+            </select>
+          </div>
+
+          <div class="card" style="padding:0;margin-bottom:20px">
+            <div style="overflow-x:auto">
+              <table class="mtbl">
+                <colgroup>
+                  <col style="width:auto">
+                  <col style="width:80px">
+                  <col style="width:60px">
+                  <col style="width:75px">
+                  <col style="width:80px">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>氏名</th>
+                    <th>属性</th>
+                    <th style="text-align:center">参加回数</th>
+                    <th style="text-align:right">今月の部費</th>
+                    <th style="text-align:center">納入状況</th>
+                  </tr>
+                </thead>
+                <tbody id="fee-tbody"></tbody>
+              </table>
+            </div>
           </div>
 
           <hr class="dv">
@@ -573,6 +615,15 @@
     <div class="mbg" id="m-bulk-add">
       <div class="modal">
         <div class="modal-title">部員を一括登録</div>
+
+        <!-- CSVファイルアップロード -->
+        <div style="margin-bottom:16px;padding:12px;background:var(--sur2);border:2px dashed var(--bdr);border-radius:8px;text-align:center" id="csv-drop-area" ondragover="event.preventDefault();this.style.borderColor='var(--grn)'" ondragleave="this.style.borderColor='var(--bdr)'" ondrop="event.preventDefault();this.style.borderColor='var(--bdr)';handleBulkAddFile({dataTransfer:event.dataTransfer})">
+          <input type="file" id="bulk-members-file" accept=".csv" onchange="handleBulkAddFile(event)" style="display:none">
+          <div style="font-size:13px;margin-bottom:6px">📁 CSVファイルをここにドラッグ&ドロップ</div>
+          <div style="font-size:11px;color:var(--tx2);margin-bottom:8px">または</div>
+          <button class="btn bp sm" onclick="document.getElementById('bulk-members-file').click()" style="font-size:12px">ファイルを選択</button>
+        </div>
+
         <div style="margin-bottom:12px;font-size:12px;color:var(--tx2)">
           <p style="margin-bottom:8px">以下の形式で入力してください（改行区切り）：</p>
           <p style="font-family:'DM Mono',monospace;background:var(--sur2);padding:8px;border-radius:6px;margin:0">
@@ -657,7 +708,7 @@
       <div class="modal" style="max-width:600px">
         <div class="modal-title">科目設定</div>
         <div class="mb-16">
-          <label class="font-semibold" style="display:block;margin-bottom:8px">種別</label>
+          <div class="font-semibold" style="display:block;margin-bottom:8px">種別</div>
           <div class="tog2">
             <button class="tbtn income on" id="cat-type-income" onclick="switchCatType('income',this)">収入</button>
             <button class="tbtn expense" id="cat-type-expense" onclick="switchCatType('expense',this)">支出</button>
@@ -677,6 +728,11 @@
             </div>
           </div>
           <button class="btn bp sm" style="width:100%" onclick="addCategory()">追加</button>
+        </div>
+
+        <div class="mb-16">
+          <div class="font-semibold mb-8">科目一覧</div>
+          <div id="categories-list"></div>
         </div>
 
         <div class="mact">

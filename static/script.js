@@ -926,11 +926,9 @@ function updateMemberRowStyle(memberId) {
   const row = document.getElementById(`member-row-${memberId}`);
   const checkbox = row?.querySelector('.member-checkbox');
   if (row && checkbox?.checked) {
-    row.style.backgroundColor = 'var(--sur2)';
-    row.style.fontWeight = '600';
+    row.classList.add('member-row-selected');
   } else if (row) {
-    row.style.backgroundColor = '';
-    row.style.fontWeight = '';
+    row.classList.remove('member-row-selected');
   }
 }
 
@@ -1014,15 +1012,53 @@ function toggleSelectAll(checked) {
   updateBulkButtons();
 }
 
+function handleBulkAddFile(event) {
+  const files = event.target?.files || event.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    toast('CSVファイルを選択してください');
+    return;
+  }
+  readBulkAddFile(file);
+}
+
+function readBulkAddFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const text = e.target.result;
+      document.getElementById('bulk-members-text').value = text;
+      toast('CSVファイルを読み込みました ✓');
+    } catch (err) {
+      toast('ファイルの読み込みに失敗しました');
+      console.error(err);
+    }
+  };
+  reader.onerror = () => {
+    toast('ファイルの読み込みに失敗しました');
+  };
+  reader.readAsText(file);
+}
+
 async function bulkAddMembers() {
   const text = document.getElementById('bulk-members-text').value.trim();
   if (!text) { toast('入力してください'); return; }
   const lines = text.split('\n').filter(l => l.trim());
   let added = 0;
   const newExecIds = [];
+
+  // 属性の日本語⇔英語マッピング
+  const attrMap = {
+    '男プレ': 'male',
+    '女プレ': 'female',
+    'マネージャー': 'manager',
+    '幹部上': 'exec'
+  };
+
   for (const line of lines) {
-    const [firstName, lastName, grade, attr] = line.split(',').map(s => s.trim());
-    if (!firstName || !lastName || !grade || !attr) {
+    const [firstName, lastName, grade, attrInput] = line.split(',').map(s => s.trim());
+    if (!firstName || !lastName || !grade || !attrInput) {
       toast(`形式が違う行があります: ${line}`);
       return;
     }
@@ -1030,10 +1066,14 @@ async function bulkAddMembers() {
       toast(`学年が不正です: ${grade}`);
       return;
     }
+
+    // 属性を日本語から英語コードに変換
+    const attr = attrMap[attrInput] || attrInput;
     if (!['male','female','manager','exec'].includes(attr)) {
-      toast(`属性が不正です: ${attr}`);
+      toast(`属性が不正です: ${attrInput}`);
       return;
     }
+
     const name = `${firstName} ${lastName}`;
     const newMemberId = nid++;
     S.members.push({ id:newMemberId, name, grade, attr });
@@ -1097,9 +1137,19 @@ function renderFee() {
     });
   }
   if (!S.pracCount[ym]) S.pracCount[ym] = {};
+
+  // フィルター値を取得
+  const fa = document.getElementById('fee-f-attr')?.value  || '';
+  const fg = document.getElementById('fee-f-grade')?.value || '';
+
+  // フィルタリング
+  let members = sortedMembers();
+  if (fa) members = members.filter(m => m.attr === fa);
+  if (fg) members = members.filter(m => m.grade === fg);
+
   const rec=S.feeRec[ym], pc=S.pracCount[ym];
   let paid=0,unpaid=0,coll=0,rem=0;
-  S.members.forEach(m => {
+  members.forEach(m => {
     const fee = calcFee(m.attr, ym, pc[m.id]||0);
     if (rec[m.id]) { paid++; coll+=fee; } else { unpaid++; rem+=fee; }
   });
@@ -1109,11 +1159,11 @@ function renderFee() {
   document.getElementById('fr-a').textContent = fmt(rem);
 
   const tb = document.getElementById('fee-tbody'); if (!tb) return;
-  tb.innerHTML = sortedMembers().map(m => {
+  tb.innerHTML = members.map((m, idx) => {
     const isPaid = !!rec[m.id];
     const fee    = calcFee(m.attr, ym, pc[m.id]||0);
     const pi = m.attr==='exec'
-      ? `<input type="number" id="prac-${m.id}-${ym.replace('-','_')}" name="practice-count" min="0" max="31" value="${pc[m.id]||0}"
+      ? `<input type="number" name="practice-count" class="practice-input" data-member-id="${m.id}" data-month="${ym}" min="0" max="31" value="${pc[m.id]||0}"
            style="width:40px;padding:8px;border:1px solid var(--bdr);border-radius:6px;font-size:16px;text-align:center"
            autocomplete="off"
            onchange="setPrac(${m.id},'${ym}',this.value)">`
@@ -1121,7 +1171,7 @@ function renderFee() {
     return `<tr>
       <td class="text-tertiary">${m.grade}<br><span class="text-amount">${m.name}</span></td>
       <td>${attrBadge(m.attr)}</td>
-      <td>${pi}</td>
+      <td class="text-center">${pi}</td>
       <td class="text-right amount-text">${fmt(fee)}</td>
       <td class="text-center">
         <button class="btn sm ${getPaidStatusClasses(isPaid)} btn-min-width"
@@ -1849,13 +1899,3 @@ async function saveCategories() {
   renderCategoriesPage();
 }
 
-/* ================================================================
-   renderCategoriesList の防御パッチ
-   categories-list 要素がなくてもエラーにならないよう上書き
-================================================================ */
-const _origRenderCategoriesList = renderCategoriesList;
-function renderCategoriesList() {
-  const el = document.getElementById('categories-list');
-  if (!el) return; // 要素がなければ何もしない
-  _origRenderCategoriesList();
-}
