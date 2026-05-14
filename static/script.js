@@ -2189,19 +2189,20 @@ function switchBudgetView(view) {
 
   const btn1 = document.getElementById('btn-budget-monthly');
   const btn2 = document.getElementById('btn-budget-yearly');
+  const monthEl = document.getElementById('budget-month');
 
   if (view === 'monthly') {
     btn1?.classList.add('bp');
     btn1?.classList.remove('bs');
     btn2?.classList.add('bs');
     btn2?.classList.remove('bp');
-    document.getElementById('budget-month')?.parentElement.style.display = 'flex';
+    if (monthEl?.parentElement) monthEl.parentElement.style.display = 'flex';
   } else {
     btn1?.classList.add('bs');
     btn1?.classList.remove('bp');
     btn2?.classList.add('bp');
     btn2?.classList.remove('bs');
-    document.getElementById('budget-month')?.parentElement.style.display = 'none';
+    if (monthEl?.parentElement) monthEl.parentElement.style.display = 'none';
   }
 
   renderBudget();
