@@ -491,6 +491,10 @@
             <button class="btn bp sm" onclick="openBudgetSettingsModal()">⚙ コート代設定</button>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+            <div style="display:flex;gap:4px;border:1px solid var(--bdr);border-radius:6px;padding:2px">
+              <button class="btn bs sm" id="btn-budget-monthly" onclick="switchBudgetView('monthly')" style="font-size:12px">📅 月間</button>
+              <button class="btn bs sm" id="btn-budget-yearly" onclick="switchBudgetView('yearly')" style="font-size:12px">📊 年間</button>
+            </div>
             <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
             <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()"
               style="font-size:13px;padding:6px 10px" autocomplete="off">

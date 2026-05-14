@@ -46,6 +46,11 @@ function getPaidStatusClasses(isPaid) {
 let accessToken = null;
 let userEmail   = null;
 
+/* ================================================================
+   BUDGET STATE
+================================================================ */
+let currentBudgetView = 'monthly';
+let editingBudgetRecordId = null;
 
 /* ================================================================
    APP STATE
@@ -1922,8 +1927,6 @@ async function saveCategories() {
    BUDGET MANAGEMENT
 ================================================================ */
 
-let editingBudgetRecordId = null;
-
 function openBudgetSettingsModal() {
   renderBudgetSettingsList();
   document.getElementById('budget-court-name').value = '';
@@ -2051,6 +2054,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (courtSelect) {
     courtSelect.addEventListener('change', updateBudgetCourtInfo);
   }
+
+  const budgetMonth = document.getElementById('budget-month');
+  if (budgetMonth && !budgetMonth.value) {
+    const today = new Date();
+    budgetMonth.value = today.toISOString().split('T')[0].slice(0, 7);
+  }
+
+  const btn1 = document.getElementById('btn-budget-monthly');
+  if (btn1) {
+    btn1.classList.add('bp');
+  }
 });
 
 async function addBudgetRecord() {
@@ -2107,6 +2121,14 @@ async function deleteBudgetRecord(id) {
 }
 
 function renderBudget() {
+  if (currentBudgetView === 'yearly') {
+    renderYearlyBudget();
+  } else {
+    renderMonthlyBudget();
+  }
+}
+
+function renderMonthlyBudget() {
   const ym = document.getElementById('budget-month')?.value;
   if (!ym) return;
 
@@ -2161,6 +2183,90 @@ function renderBudget() {
 /* ================================================================
    YEARLY BUDGET VIEW (within renderBudget or separate)
 ================================================================ */
+
+function switchBudgetView(view) {
+  currentBudgetView = view;
+
+  const btn1 = document.getElementById('btn-budget-monthly');
+  const btn2 = document.getElementById('btn-budget-yearly');
+
+  if (view === 'monthly') {
+    btn1?.classList.add('bp');
+    btn1?.classList.remove('bs');
+    btn2?.classList.add('bs');
+    btn2?.classList.remove('bp');
+    document.getElementById('budget-month')?.parentElement.style.display = 'flex';
+  } else {
+    btn1?.classList.add('bs');
+    btn1?.classList.remove('bp');
+    btn2?.classList.add('bp');
+    btn2?.classList.remove('bs');
+    document.getElementById('budget-month')?.parentElement.style.display = 'none';
+  }
+
+  renderBudget();
+}
+
+function renderYearlyBudget() {
+  const year = new Date().getFullYear().toString();
+  const monthlyData = {};
+
+  for (let m = 1; m <= 12; m++) {
+    const ym = `${year}-${String(m).padStart(2, '0')}`;
+    const records = S.budget.records.filter(r => r.date.startsWith(ym));
+
+    let totalAmount = 0;
+    let totalHours = 0;
+    records.forEach(r => {
+      totalAmount += r.amount;
+      totalHours += r.hours;
+    });
+
+    monthlyData[m] = { count: records.length, hours: totalHours, amount: totalAmount };
+  }
+
+  const yearlyTotal = Object.values(monthlyData).reduce((s, d) => s + d.amount, 0);
+  const yearlyHours = Object.values(monthlyData).reduce((s, d) => s + d.hours, 0);
+
+  const stats = `
+    <div class="fsrow">
+      <div class="fstat">
+        <div class="fn">${Object.values(monthlyData).reduce((s, d) => s + d.count, 0)}</div>
+        <div class="fl">年間登録数</div>
+      </div>
+      <div class="fstat">
+        <div class="fn">${yearlyHours.toFixed(1)}h</div>
+        <div class="fl">年間時間</div>
+      </div>
+      <div class="fstat">
+        <div class="fn" style="color:var(--red)">${fmt(yearlyTotal)}</div>
+        <div class="fl">年間予算</div>
+      </div>
+    </div>
+  `;
+
+  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  const tableHtml = `<div class="card card-no-pad overflow-hidden">
+    <div style="overflow-x:auto"><table class="ltbl">
+      <thead><tr>
+        <th>月</th><th>登録数</th><th>時間</th><th class="text-right">予算</th>
+      </tr></thead>
+      <tbody>
+        ${months.map((m, i) => {
+          const data = monthlyData[i + 1];
+          return `<tr>
+            <td>${m}</td>
+            <td>${data.count}</td>
+            <td>${data.hours.toFixed(1)}h</td>
+            <td class="text-right" style="color:var(--red);font-weight:600">${fmt(data.amount)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+
+  document.getElementById('budget-content').innerHTML = stats + tableHtml;
+}
 
 async function saveAllBudget() {
   await saveBudgetRecords();
