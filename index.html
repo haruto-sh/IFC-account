@@ -490,17 +490,32 @@
             <div class="st">予算管理</div>
             <button class="btn bp sm" onclick="openBudgetSettingsModal()">⚙ コート代設定</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
-            <div style="display:flex;gap:4px;border:1px solid var(--bdr);border-radius:6px;padding:2px">
-              <button class="btn bs sm" id="btn-budget-monthly" onclick="switchBudgetView('monthly')" style="font-size:12px">📅 月間</button>
-              <button class="btn bs sm" id="btn-budget-yearly" onclick="switchBudgetView('yearly')" style="font-size:12px">📊 年間</button>
-            </div>
-            <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
-            <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()"
-              style="font-size:13px;padding:6px 10px" autocomplete="off">
-            <button class="btn bs sm" onclick="openBudgetRecordModal()">➕ 予算を追加</button>
+
+          <!-- タブ -->
+          <div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:12px;padding-bottom:8px">
+            <button class="btn bp sm active" id="tab-budget-court" onclick="switchBudgetTab('court')" style="font-size:12px">🏟️ コート</button>
+            <button class="btn bs sm" id="tab-budget-category" onclick="switchBudgetTab('category')" style="font-size:12px">📋 他の科目</button>
           </div>
-          <div id="budget-content"></div>
+
+          <!-- コートタブのコンテンツ -->
+          <div id="tab-content-court" class="tab-content active">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+              <label for="budget-month" style="font-size:12px;color:var(--tx2)">対象月</label>
+              <input type="month" id="budget-month" name="budget-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
+              <button class="btn bs sm" onclick="openBudgetRecordModal()">➕ 予算を追加</button>
+            </div>
+            <div id="budget-court-content"></div>
+          </div>
+
+          <!-- 他の科目タブのコンテンツ -->
+          <div id="tab-content-category" class="tab-content" style="display:none">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;margin-bottom:12px">
+              <label for="budget-category-month" style="font-size:12px;color:var(--tx2)">対象月</label>
+              <input type="month" id="budget-category-month" name="budget-category-month" onchange="renderBudget()" style="font-size:13px;padding:6px 10px" autocomplete="off">
+              <button class="btn bs sm" onclick="openBudgetCategoryRecordModal()">➕ 追加</button>
+            </div>
+            <div id="budget-category-content"></div>
+          </div>
         </div>
 
       </main>
@@ -833,6 +848,39 @@
         <div class="mact">
           <button class="btn bs" onclick="closeM('m-budget-record')">キャンセル</button>
           <button class="btn bp" id="budget-record-submit-btn" onclick="addBudgetRecord()">追加する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 他の科目予算を追加 -->
+    <div class="mbg" id="m-budget-category-record">
+      <div class="modal">
+        <div class="modal-title" id="budget-cat-record-modal-title">他の科目を追加</div>
+        <div class="fg">
+          <div class="fi">
+            <label for="budget-cat-date">日付</label>
+            <input type="date" id="budget-cat-date" name="budget-cat-date" autocomplete="off">
+          </div>
+          <div class="fi full">
+            <label for="budget-cat-classification">分類</label>
+            <select id="budget-cat-classification" name="budget-cat-classification" onchange="updateBudgetCategoryList()" autocomplete="off"></select>
+          </div>
+          <div class="fi full">
+            <label for="budget-cat-category">科目</label>
+            <select id="budget-cat-category" name="budget-cat-category" autocomplete="off"></select>
+          </div>
+          <div class="fi">
+            <label for="budget-cat-amount">金額（円）</label>
+            <input type="number" id="budget-cat-amount" name="budget-cat-amount" placeholder="0" min="0" inputmode="numeric" autocomplete="off">
+          </div>
+          <div class="fi full">
+            <label for="budget-cat-remarks">備考（任意）</label>
+            <input type="text" id="budget-cat-remarks" name="budget-cat-remarks" placeholder="例：消耗品購入" autocomplete="off">
+          </div>
+        </div>
+        <div class="mact">
+          <button class="btn bs" onclick="closeM('m-budget-category-record')">キャンセル</button>
+          <button class="btn bp" id="budget-cat-submit-btn" onclick="addBudgetCategoryRecord()">追加</button>
         </div>
       </div>
     </div>

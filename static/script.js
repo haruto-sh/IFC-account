@@ -15,6 +15,7 @@ const SH = {
   CATEGORIES: 'categories',
   BUDGET: 'budget_records',
   BUDGET_SETTINGS: 'budget_settings',
+  BUDGET_CATEGORY_RECORDS: 'budget_category_records',
 };
 
 /* ================================================================
@@ -49,7 +50,7 @@ let userEmail   = null;
 /* ================================================================
    BUDGET STATE
 ================================================================ */
-let currentBudgetView = 'monthly';
+let currentBudgetTab = 'court';
 let editingBudgetRecordId = null;
 
 /* ================================================================
@@ -59,7 +60,7 @@ let nid = 1;
 let S = {
   txs:[], members:[], feeRec:{}, pracCount:{}, categories:[],
   fee: { base:{ male:2000, female:2000, manager:1500, exec:500 }, adjs:[] },
-  budget: { records:[], settings:[] },
+  budget: { records:[], settings:[], categoryRecords:[] },
   acct: 'cash',
   type: 'income',
 };
@@ -264,6 +265,7 @@ async function ensureSheets() {
       [SH.CATEGORIES]: [['type','classification','category','order']],
       [SH.BUDGET]: [['id','date','court_name','court_condition','hours','price_per_hour','amount','remarks']],
       [SH.BUDGET_SETTINGS]: [['id','court_name','court_condition','price_per_hour','remarks']],
+      [SH.BUDGET_CATEGORY_RECORDS]: [['id','date','classification','category','amount','remarks']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
   }
@@ -276,7 +278,7 @@ async function loadAll() {
   setLoading(true, 'データを読み込み中...');
   await ensureSheets();
 
-  const [txRows, mRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings] = await Promise.all([
+  const [txRows, mRows, frRows, pcRows, fsRows, catRows, budgetRecords, budgetSettings, budgetCategoryRecords] = await Promise.all([
     sheetsGet(SH.TX      + '!A2:J'),
     sheetsGet(SH.MEMBERS + '!A2:D'),
     sheetsGet(SH.FEE_REC + '!A2:D'),
@@ -285,6 +287,7 @@ async function loadAll() {
     sheetsGet(SH.CATEGORIES + '!A2:D'),
     sheetsGet(SH.BUDGET + '!A2:H'),
     sheetsGet(SH.BUDGET_SETTINGS + '!A2:E'),
+    sheetsGet(SH.BUDGET_CATEGORY_RECORDS + '!A2:F'),
   ]);
 
   S.txs = txRows
@@ -340,6 +343,13 @@ async function loadAll() {
     .map(r => ({
       id:r[0]|0, court_name:String(r[1]), court_condition:String(r[2]),
       price_per_hour:r[3]|0, remarks:r[4]||''
+    }));
+
+  S.budget.categoryRecords = budgetCategoryRecords
+    .filter(r => r[0] && r[1])
+    .map(r => ({
+      id:r[0]|0, date:String(r[1]), classification:String(r[2]||''), category:String(r[3]||''),
+      amount:r[4]|0, remarks:r[5]||''
     }));
 
   setLoading(false);
@@ -2061,9 +2071,15 @@ document.addEventListener('DOMContentLoaded', () => {
     budgetMonth.value = today.toISOString().split('T')[0].slice(0, 7);
   }
 
-  const btn1 = document.getElementById('btn-budget-monthly');
-  if (btn1) {
-    btn1.classList.add('bp');
+  const budgetCategoryMonth = document.getElementById('budget-category-month');
+  if (budgetCategoryMonth && !budgetCategoryMonth.value) {
+    const today = new Date();
+    budgetCategoryMonth.value = today.toISOString().split('T')[0].slice(0, 7);
+  }
+
+  const tabBtn1 = document.getElementById('tab-budget-court');
+  if (tabBtn1) {
+    tabBtn1.classList.add('active');
   }
 });
 
@@ -2121,14 +2137,14 @@ async function deleteBudgetRecord(id) {
 }
 
 function renderBudget() {
-  if (currentBudgetView === 'yearly') {
-    renderYearlyBudget();
-  } else {
-    renderMonthlyBudget();
+  if (currentBudgetTab === 'court') {
+    renderCourtBudget();
+  } else if (currentBudgetTab === 'category') {
+    renderCategoryBudget();
   }
 }
 
-function renderMonthlyBudget() {
+function renderCourtBudget() {
   const ym = document.getElementById('budget-month')?.value;
   if (!ym) return;
 
@@ -2177,99 +2193,185 @@ function renderMonthlyBudget() {
         </table></div>
       </div>`;
 
-  document.getElementById('budget-content').innerHTML = stats + tableHtml;
+  document.getElementById('budget-court-content').innerHTML = stats + tableHtml;
+}
+
+function renderCategoryBudget() {
+  const ym = document.getElementById('budget-category-month')?.value;
+  if (!ym) return;
+
+  const records = S.budget.categoryRecords.filter(r => r.date.startsWith(ym));
+  const totalAmount = records.reduce((s, r) => s + r.amount, 0);
+
+  const stats = `
+    <div class="fsrow">
+      <div class="fstat">
+        <div class="fn">${records.length}</div>
+        <div class="fl">登録数</div>
+      </div>
+      <div class="fstat">
+        <div class="fn" style="color:var(--red)">${fmt(totalAmount)}</div>
+        <div class="fl">月間合計</div>
+      </div>
+    </div>
+  `;
+
+  const tableHtml = records.length === 0
+    ? '<div class="empty">記録がありません</div>'
+    : `<div class="card card-no-pad overflow-hidden">
+        <div style="overflow-x:auto"><table class="ltbl">
+          <thead><tr>
+            <th>日付</th><th>分類</th><th>科目</th><th class="text-right">金額</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${records.sort((a,b) => a.date.localeCompare(b.date))
+              .map(r => `<tr>
+                <td>${r.date.slice(5)}</td>
+                <td>${r.classification}</td>
+                <td>${r.category}</td>
+                <td class="text-right" style="color:var(--red);font-weight:600">${fmt(r.amount)}</td>
+                <td style="white-space:nowrap"><button class="btn bs sm" onclick="openBudgetCategoryRecordModal(${r.id})" style="margin-right:4px">編集</button><button class="btn bd sm" onclick="deleteBudgetCategoryRecord(${r.id})">削除</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+
+  document.getElementById('budget-category-content').innerHTML = stats + tableHtml;
 }
 
 /* ================================================================
    YEARLY BUDGET VIEW (within renderBudget or separate)
 ================================================================ */
 
-function switchBudgetView(view) {
-  currentBudgetView = view;
+function switchBudgetTab(tab) {
+  currentBudgetTab = tab;
 
-  const btn1 = document.getElementById('btn-budget-monthly');
-  const btn2 = document.getElementById('btn-budget-yearly');
-  const monthEl = document.getElementById('budget-month');
+  const tab1 = document.getElementById('tab-budget-court');
+  const tab2 = document.getElementById('tab-budget-category');
+  const content1 = document.getElementById('tab-content-court');
+  const content2 = document.getElementById('tab-content-category');
 
-  if (view === 'monthly') {
-    btn1?.classList.add('bp');
-    btn1?.classList.remove('bs');
-    btn2?.classList.add('bs');
-    btn2?.classList.remove('bp');
-    if (monthEl?.parentElement) monthEl.parentElement.style.display = 'flex';
+  if (tab === 'court') {
+    tab1?.classList.add('active');
+    tab1?.classList.remove('inactive');
+    tab2?.classList.add('inactive');
+    tab2?.classList.remove('active');
+    content1?.classList.add('active');
+    content1?.classList.remove('inactive');
+    content2?.classList.add('inactive');
+    content2?.classList.remove('active');
   } else {
-    btn1?.classList.add('bs');
-    btn1?.classList.remove('bp');
-    btn2?.classList.add('bp');
-    btn2?.classList.remove('bs');
-    if (monthEl?.parentElement) monthEl.parentElement.style.display = 'none';
+    tab1?.classList.add('inactive');
+    tab1?.classList.remove('active');
+    tab2?.classList.add('active');
+    tab2?.classList.remove('inactive');
+    content1?.classList.add('inactive');
+    content1?.classList.remove('active');
+    content2?.classList.add('active');
+    content2?.classList.remove('inactive');
   }
 
   renderBudget();
 }
 
-function renderYearlyBudget() {
-  const year = new Date().getFullYear().toString();
-  const monthlyData = {};
+/* ================================================================
+   CATEGORY BUDGET MANAGEMENT
+================================================================ */
 
-  for (let m = 1; m <= 12; m++) {
-    const ym = `${year}-${String(m).padStart(2, '0')}`;
-    const records = S.budget.records.filter(r => r.date.startsWith(ym));
+let editingBudgetCategoryRecordId = null;
 
-    let totalAmount = 0;
-    let totalHours = 0;
-    records.forEach(r => {
-      totalAmount += r.amount;
-      totalHours += r.hours;
-    });
+function openBudgetCategoryRecordModal(recordId = null) {
+  editingBudgetCategoryRecordId = recordId;
 
-    monthlyData[m] = { count: records.length, hours: totalHours, amount: totalAmount };
+  const titleEl = document.getElementById('budget-cat-record-modal-title');
+  const submitBtn = document.getElementById('budget-cat-submit-btn');
+
+  if (recordId) {
+    const record = S.budget.categoryRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    titleEl.textContent = '他の科目を編集';
+    submitBtn.textContent = '保存する';
+
+    document.getElementById('budget-cat-date').value = record.date;
+    document.getElementById('budget-cat-amount').value = record.amount;
+    document.getElementById('budget-cat-remarks').value = record.remarks || '';
+  } else {
+    titleEl.textContent = '他の科目を追加';
+    submitBtn.textContent = '追加';
+
+    const today = new Date();
+    document.getElementById('budget-cat-date').value = today.toISOString().split('T')[0];
+    document.getElementById('budget-cat-amount').value = '';
+    document.getElementById('budget-cat-remarks').value = '';
   }
 
-  const yearlyTotal = Object.values(monthlyData).reduce((s, d) => s + d.amount, 0);
-  const yearlyHours = Object.values(monthlyData).reduce((s, d) => s + d.hours, 0);
+  const classifications = [...new Set(S.categories.map(c => c.classification))];
+  const classifySelect = document.getElementById('budget-cat-classification');
+  classifySelect.innerHTML = classifications.map(c => `<option value="${c}">${c}</option>`).join('');
 
-  const stats = `
-    <div class="fsrow">
-      <div class="fstat">
-        <div class="fn">${Object.values(monthlyData).reduce((s, d) => s + d.count, 0)}</div>
-        <div class="fl">年間登録数</div>
-      </div>
-      <div class="fstat">
-        <div class="fn">${yearlyHours.toFixed(1)}h</div>
-        <div class="fl">年間時間</div>
-      </div>
-      <div class="fstat">
-        <div class="fn" style="color:var(--red)">${fmt(yearlyTotal)}</div>
-        <div class="fl">年間予算</div>
-      </div>
-    </div>
-  `;
-
-  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-  const tableHtml = `<div class="card card-no-pad overflow-hidden">
-    <div style="overflow-x:auto"><table class="ltbl">
-      <thead><tr>
-        <th>月</th><th>登録数</th><th>時間</th><th class="text-right">予算</th>
-      </tr></thead>
-      <tbody>
-        ${months.map((m, i) => {
-          const data = monthlyData[i + 1];
-          return `<tr>
-            <td>${m}</td>
-            <td>${data.count}</td>
-            <td>${data.hours.toFixed(1)}h</td>
-            <td class="text-right" style="color:var(--red);font-weight:600">${fmt(data.amount)}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div>
-  </div>`;
-
-  document.getElementById('budget-content').innerHTML = stats + tableHtml;
+  updateBudgetCategoryList();
+  openM('m-budget-category-record');
 }
 
-async function saveAllBudget() {
+function updateBudgetCategoryList() {
+  const classifyValue = document.getElementById('budget-cat-classification').value;
+  const categories = S.categories.filter(c => c.classification === classifyValue);
+  const categorySelect = document.getElementById('budget-cat-category');
+  categorySelect.innerHTML = categories.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
+}
+
+async function addBudgetCategoryRecord() {
+  const date = document.getElementById('budget-cat-date').value;
+  const classification = document.getElementById('budget-cat-classification').value;
+  const category = document.getElementById('budget-cat-category').value;
+  const amount = parseInt(document.getElementById('budget-cat-amount').value);
+  const remarks = document.getElementById('budget-cat-remarks').value.trim();
+
+  if (!date) { toast('日付を入力してください'); return; }
+  if (!classification || !category) { toast('科目を選択してください'); return; }
+  if (!amount || amount <= 0) { toast('金額を正しく入力してください'); return; }
+
+  if (editingBudgetCategoryRecordId) {
+    const record = S.budget.categoryRecords.find(r => r.id === editingBudgetCategoryRecordId);
+    if (record) {
+      record.date = date;
+      record.classification = classification;
+      record.category = category;
+      record.amount = amount;
+      record.remarks = remarks;
+      toast('更新しました ✓');
+    }
+  } else {
+    S.budget.categoryRecords.push({
+      id: nid++,
+      date: date,
+      classification: classification,
+      category: category,
+      amount: amount,
+      remarks: remarks
+    });
+    toast('追加しました ✓');
+  }
+
+  closeM('m-budget-category-record');
+  editingBudgetCategoryRecordId = null;
+  renderBudget();
+  await saveBudgetCategoryRecords();
+}
+
+async function deleteBudgetCategoryRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  S.budget.categoryRecords = S.budget.categoryRecords.filter(r => r.id !== id);
+  toast('削除しました');
+  renderBudget();
+  await saveBudgetCategoryRecords();
+}
+
+const saveBudgetCategoryRecords = () => saveSheet(async () => {
+  await sheetsWriteAll(SH.BUDGET_CATEGORY_RECORDS,
+    S.budget.categoryRecords.map(r => [r.id, r.date, r.classification, r.category, r.amount, r.remarks || '']));
+});
   await saveBudgetRecords();
   await saveBudgetSettings();
 }
