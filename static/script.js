@@ -2252,23 +2252,19 @@ function switchBudgetTab(tab) {
   const content2 = document.getElementById('tab-content-category');
 
   if (tab === 'court') {
-    tab1?.classList.add('active');
-    tab1?.classList.remove('inactive');
-    tab2?.classList.add('inactive');
-    tab2?.classList.remove('active');
-    content1?.classList.add('active');
-    content1?.classList.remove('inactive');
-    content2?.classList.add('inactive');
-    content2?.classList.remove('active');
+    tab1?.classList.remove('bs');
+    tab1?.classList.add('bp');
+    tab2?.classList.remove('bp');
+    tab2?.classList.add('bs');
+    content1.style.display = 'block';
+    content2.style.display = 'none';
   } else {
-    tab1?.classList.add('inactive');
-    tab1?.classList.remove('active');
-    tab2?.classList.add('active');
-    tab2?.classList.remove('inactive');
-    content1?.classList.add('inactive');
-    content1?.classList.remove('active');
-    content2?.classList.add('active');
-    content2?.classList.remove('inactive');
+    tab1?.classList.remove('bp');
+    tab1?.classList.add('bs');
+    tab2?.classList.remove('bs');
+    tab2?.classList.add('bp');
+    content1.style.display = 'none';
+    content2.style.display = 'block';
   }
 
   renderBudget();
