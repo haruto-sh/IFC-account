@@ -85,6 +85,53 @@ header {
 .hdiv { width: 1px; height: 24px; background: var(--bdr); }
 
 /* ----------------------------------------------------------------
+   User Menu
+---------------------------------------------------------------- */
+.user-menu {
+  position: fixed;
+  top: 52px;
+  right: 20px;
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 200;
+  min-width: 220px;
+}
+
+.user-menu-content {
+  padding: 12px;
+}
+
+.user-info {
+  padding: 8px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--bdr);
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.menu-section {
+  margin-bottom: 12px;
+}
+
+.menu-section label {
+  display: block;
+  font-size: 12px;
+  color: var(--tx2);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.menu-section select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--bdr);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* ----------------------------------------------------------------
    Mobile bottom nav
 ---------------------------------------------------------------- */
 #bottom-nav {

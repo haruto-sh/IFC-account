@@ -583,10 +583,19 @@ function renderHdr() {
 ================================================================ */
 function renderDash() {
   const { cash, bank } = calcBal();
-  const ym = toYM(new Date());
+  let ym = toYM(new Date());
+  const range = getFiscalYearRange(currentFiscalYear);
+
+  // 当月が会計年度外なら会計年度内の最初の月を使用
+  if (!range.includes(ym)) {
+    ym = range[0];
+  }
+
   let inc=0,exp=0,ci=0,co=0,bi=0,bo=0;
   S.txs.forEach(t => {
     if (!t.date || !t.date.startsWith(ym)) return;
+    // 会計年度フィルタ追加
+    if (!range.some(m => t.date.startsWith(m))) return;
     if (t.type==='income')  { inc+=t.amount; t.acct==='cash'?ci+=t.amount:bi+=t.amount; }
     if (t.type==='expense') { exp+=t.amount; t.acct==='cash'?co+=t.amount:bo+=t.amount; }
   });
@@ -892,7 +901,10 @@ function showLedger(type) {
 }
 
 function renderCashLedger(acct, title) {
+  const range = getFiscalYearRange(currentFiscalYear);
   const txs = S.txs.filter(t => {
+    // 会計年度フィルタ追加
+    if (!t.date || !range.some(m => t.date.startsWith(m))) return false;
     if (t.type==='transfer') return t.acct===acct || t.toAcct===acct;
     return t.acct===acct;
   }).sort((a,b) => a.date.localeCompare(b.date));
@@ -932,8 +944,9 @@ function renderCashLedger(acct, title) {
 }
 
 function renderCatLedger() {
+  const range = getFiscalYearRange(currentFiscalYear);
   const clss = {};
-  S.txs.filter(t => t.type!=='transfer').forEach(t => {
+  S.txs.filter(t => t.type!=='transfer' && t.date && range.some(m => t.date.startsWith(m))).forEach(t => {
     if (!clss[t.classification]) clss[t.classification] = [];
     clss[t.classification].push(t);
   });
@@ -1223,7 +1236,15 @@ async function bulkDelete() {
    FEES
 ================================================================ */
 function renderFee() {
-  const ym = document.getElementById('fee-month')?.value; if (!ym) return;
+  let ym = document.getElementById('fee-month')?.value;
+  if (!ym) return;
+
+  const range = getFiscalYearRange(currentFiscalYear);
+  if (!range.includes(ym)) {
+    ym = range[0];
+    document.getElementById('fee-month').value = ym;
+  }
+
   if (!S.feeRec[ym]) {
     S.feeRec[ym] = {};
     S.members.forEach(m => {
@@ -1708,6 +1729,25 @@ function closeM(id) { document.getElementById(id).classList.remove('open'); }
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.mbg').forEach(m =>
     m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); }));
+
+  // ユーザーメニュー初期化
+  const userNameEl = document.getElementById('user-name');
+  if (userNameEl && userEmail) {
+    userNameEl.textContent = userEmail.split('@')[0];
+  }
+
+  // グローバル会計年度初期化
+  initGlobalFiscalYear();
+
+  // メニュー自動クローズ
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('user-menu');
+    if (!menu) return;
+    const btn = e.target.closest('button[onclick="toggleUserMenu()"]');
+    if (!btn && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
 });
 
 let toastTimeout = null;
@@ -2124,7 +2164,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabBtn1.classList.add('active');
   }
 
-  initBudgetFiscalYear();
   renderBudget();
 });
 
@@ -2287,6 +2326,67 @@ function renderCategoryBudget() {
 }
 
 /* ================================================================
+   GLOBAL FISCAL YEAR MANAGEMENT
+================================================================ */
+
+function toggleUserMenu() {
+  const menu = document.getElementById('user-menu');
+  if (menu) {
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function switchGlobalFiscalYear() {
+  const select = document.getElementById('global-fiscal-year');
+  if (!select) return;
+
+  currentFiscalYear = parseInt(select.value);
+
+  const range = getFiscalYearRange(currentFiscalYear);
+  ['budget-month', 'budget-category-month', 'fee-month', 'ledger-month'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input && !range.includes(input.value)) {
+      input.value = range[0];
+    }
+  });
+
+  rerenderCurrentPage();
+}
+
+function rerenderCurrentPage() {
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return;
+
+  const pageId = activePage.id;
+  if (pageId === 'page-dashboard') renderDash();
+  else if (pageId === 'page-ledger') showLedger(currentLedger);
+  else if (pageId === 'page-fees') renderFee();
+  else if (pageId === 'page-budget') renderBudget();
+}
+
+function initGlobalFiscalYear() {
+  const availableYears = getAvailableFiscalYears();
+  const today = new Date();
+  const currentYear = getFiscalYear(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+
+  if (currentFiscalYear === null) {
+    currentFiscalYear = availableYears.includes(currentYear) ? currentYear : availableYears[0];
+  }
+
+  const fiscalSelect = document.getElementById('global-fiscal-year');
+  if (fiscalSelect) {
+    fiscalSelect.innerHTML = '';
+    availableYears.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = getFiscalYearLabel(year);
+      if (year === currentFiscalYear) option.selected = true;
+      fiscalSelect.appendChild(option);
+    });
+  }
+}
+
+/* ================================================================
    YEARLY BUDGET VIEW (within renderBudget or separate)
 ================================================================ */
 
@@ -2317,56 +2417,6 @@ function switchBudgetTab(tab) {
   renderBudget();
 }
 
-function initBudgetFiscalYear() {
-  const availableYears = getAvailableFiscalYears();
-  const today = new Date();
-  const currentYear = getFiscalYear(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
-
-  if (currentFiscalYear === null) {
-    currentFiscalYear = availableYears.includes(currentYear) ? currentYear : availableYears[0];
-  }
-
-  const fiscalSelect = document.getElementById('budget-fiscal-year');
-  const categorySelect = document.getElementById('budget-category-fiscal-year');
-
-  [fiscalSelect, categorySelect].forEach(select => {
-    if (!select) return;
-    select.innerHTML = '';
-    availableYears.forEach(year => {
-      const option = document.createElement('option');
-      option.value = year;
-      option.textContent = getFiscalYearLabel(year);
-      if (year === currentFiscalYear) option.selected = true;
-      select.appendChild(option);
-    });
-  });
-}
-
-function switchBudgetFiscalYear() {
-  const fiscalSelect = document.getElementById('budget-fiscal-year');
-  const categorySelect = document.getElementById('budget-category-fiscal-year');
-
-  const selectedYear = currentBudgetTab === 'court' ? fiscalSelect?.value : categorySelect?.value;
-  if (selectedYear) {
-    currentFiscalYear = parseInt(selectedYear);
-    const range = getFiscalYearRange(currentFiscalYear);
-
-    [fiscalSelect, categorySelect].forEach(select => {
-      if (select) select.value = currentFiscalYear;
-    });
-
-    const monthInput = document.getElementById('budget-month');
-    const categoryMonthInput = document.getElementById('budget-category-month');
-
-    [monthInput, categoryMonthInput].forEach(input => {
-      if (input && !range.includes(input.value)) {
-        input.value = range[0];
-      }
-    });
-
-    renderBudget();
-  }
-}
 
 /* ================================================================
    CATEGORY BUDGET MANAGEMENT
