@@ -52,6 +52,7 @@ let userEmail   = null;
 ================================================================ */
 let currentBudgetTab = 'court';
 let editingBudgetRecordId = null;
+let budgetCategoryType = 'income';
 
 /* ================================================================
    APP STATE
@@ -265,7 +266,7 @@ async function ensureSheets() {
       [SH.CATEGORIES]: [['type','classification','category','order']],
       [SH.BUDGET]: [['id','date','court_name','court_condition','hours','price_per_hour','amount','remarks']],
       [SH.BUDGET_SETTINGS]: [['id','court_name','court_condition','price_per_hour','remarks']],
-      [SH.BUDGET_CATEGORY_RECORDS]: [['id','date','classification','category','amount','remarks']],
+      [SH.BUDGET_CATEGORY_RECORDS]: [['id','date','type','classification','category','amount','remarks']],
     };
     for (const name of toAdd) await sheetsUpdate(`${name}!A1`, headers[name]);
   }
@@ -287,7 +288,7 @@ async function loadAll() {
     sheetsGet(SH.CATEGORIES + '!A2:D'),
     sheetsGet(SH.BUDGET + '!A2:H'),
     sheetsGet(SH.BUDGET_SETTINGS + '!A2:E'),
-    sheetsGet(SH.BUDGET_CATEGORY_RECORDS + '!A2:F'),
+    sheetsGet(SH.BUDGET_CATEGORY_RECORDS + '!A2:G'),
   ]);
 
   S.txs = txRows
@@ -348,8 +349,8 @@ async function loadAll() {
   S.budget.categoryRecords = budgetCategoryRecords
     .filter(r => r[0] && r[1])
     .map(r => ({
-      id:r[0]|0, date:String(r[1]), classification:String(r[2]||''), category:String(r[3]||''),
-      amount:r[4]|0, remarks:r[5]||''
+      id:r[0]|0, date:String(r[1]), type:String(r[2]||'expense'), classification:String(r[3]||''), category:String(r[4]||''),
+      amount:r[5]|0, remarks:r[6]||''
     }));
 
   setLoading(false);
@@ -2289,6 +2290,7 @@ function openBudgetCategoryRecordModal(recordId = null) {
     titleEl.textContent = '他の科目を編集';
     submitBtn.textContent = '保存する';
 
+    budgetCategoryType = record.type || 'income';
     document.getElementById('budget-cat-date').value = record.date;
     document.getElementById('budget-cat-amount').value = record.amount;
     document.getElementById('budget-cat-remarks').value = record.remarks || '';
@@ -2296,23 +2298,56 @@ function openBudgetCategoryRecordModal(recordId = null) {
     titleEl.textContent = '他の科目を追加';
     submitBtn.textContent = '追加';
 
+    budgetCategoryType = 'income';
     const today = new Date();
     document.getElementById('budget-cat-date').value = today.toISOString().split('T')[0];
     document.getElementById('budget-cat-amount').value = '';
     document.getElementById('budget-cat-remarks').value = '';
   }
 
-  const classifications = [...new Set(S.categories.map(c => c.classification))];
+  const typeButtons = document.querySelectorAll('.tbtn.income, .tbtn.expense');
+  typeButtons.forEach(btn => btn.classList.remove('on'));
+  if (budgetCategoryType === 'income') {
+    document.getElementById('budget-cat-t-income').classList.add('on');
+  } else {
+    document.getElementById('budget-cat-t-expense').classList.add('on');
+  }
+
+  const classifications = [...new Set(S.categories.filter(c => c.type === budgetCategoryType).map(c => c.classification))];
   const classifySelect = document.getElementById('budget-cat-classification');
-  classifySelect.innerHTML = classifications.map(c => `<option value="${c}">${c}</option>`).join('');
+  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${c}</option>`).join('');
 
   updateBudgetCategoryList();
   openM('m-budget-category-record');
 }
 
+function switchBudgetCategoryType(type) {
+  budgetCategoryType = type;
+
+  const incomeBtn = document.getElementById('budget-cat-t-income');
+  const expenseBtn = document.getElementById('budget-cat-t-expense');
+
+  if (type === 'income') {
+    incomeBtn.classList.add('on');
+    expenseBtn.classList.remove('on');
+  } else {
+    incomeBtn.classList.remove('on');
+    expenseBtn.classList.add('on');
+  }
+
+  renderBudgetCategoryClassifications();
+}
+
+function renderBudgetCategoryClassifications() {
+  const classifications = [...new Set(S.categories.filter(c => c.type === budgetCategoryType).map(c => c.classification))];
+  const classifySelect = document.getElementById('budget-cat-classification');
+  classifySelect.innerHTML = classifications.map((c, idx) => `<option value="${c}" ${idx === 0 ? 'selected' : ''}>${c}</option>`).join('');
+  updateBudgetCategoryList();
+}
+
 function updateBudgetCategoryList() {
   const classifyValue = document.getElementById('budget-cat-classification').value;
-  const categories = S.categories.filter(c => c.classification === classifyValue);
+  const categories = S.categories.filter(c => c.type === budgetCategoryType && c.classification === classifyValue);
   const categorySelect = document.getElementById('budget-cat-category');
   categorySelect.innerHTML = categories.map(c => `<option value="${c.category}">${c.category}</option>`).join('');
 }
@@ -2332,6 +2367,7 @@ async function addBudgetCategoryRecord() {
     const record = S.budget.categoryRecords.find(r => r.id === editingBudgetCategoryRecordId);
     if (record) {
       record.date = date;
+      record.type = budgetCategoryType;
       record.classification = classification;
       record.category = category;
       record.amount = amount;
@@ -2342,6 +2378,7 @@ async function addBudgetCategoryRecord() {
     S.budget.categoryRecords.push({
       id: nid++,
       date: date,
+      type: budgetCategoryType,
       classification: classification,
       category: category,
       amount: amount,
@@ -2366,7 +2403,7 @@ async function deleteBudgetCategoryRecord(id) {
 
 const saveBudgetCategoryRecords = () => saveSheet(async () => {
   await sheetsWriteAll(SH.BUDGET_CATEGORY_RECORDS,
-    S.budget.categoryRecords.map(r => [r.id, r.date, r.classification, r.category, r.amount, r.remarks || '']));
+    S.budget.categoryRecords.map(r => [r.id, r.date, r.type || 'expense', r.classification, r.category, r.amount, r.remarks || '']));
 });
 
 async function saveAllBudget() {

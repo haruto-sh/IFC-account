@@ -853,6 +853,16 @@
     <div class="mbg" id="m-budget-category-record">
       <div class="modal">
         <div class="modal-title" id="budget-cat-record-modal-title">他の科目を追加</div>
+
+        <!-- タイプ選択 -->
+        <fieldset class="fieldset-reset mb-12">
+          <legend class="mb-6" style="font-size:0.9em">タイプ</legend>
+          <div class="tog2 mb-12">
+            <button class="tbtn income on" id="budget-cat-t-income" onclick="switchBudgetCategoryType('income')">収入</button>
+            <button class="tbtn expense" id="budget-cat-t-expense" onclick="switchBudgetCategoryType('expense')">支出</button>
+          </div>
+        </fieldset>
+
         <div class="fg">
           <div class="fi">
             <label for="budget-cat-date">日付</label>
